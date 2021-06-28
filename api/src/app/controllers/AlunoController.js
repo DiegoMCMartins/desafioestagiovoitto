@@ -13,12 +13,12 @@ class AlunoController {
     if(aluno) {
       return res.json(aluno.dataValues);
     }
+
     res.status(404).send('Aluno não foi encontrado, verifique se os dados estão corretos');
   }
 
   async create(req, res) {
     const aluno = req.body;
-    //TODO: validate aluno
     const newAluno = await Aluno.create(aluno);
     if(newAluno) {
       return res.status(200).send('Usuario criado com sucesso');
@@ -28,7 +28,14 @@ class AlunoController {
   }
 
   async update(req, res) {
-    // TODO
+    const {id, ...updateInfo} = req.body;
+    const aluno = await Aluno.update(updateInfo, {
+      where: {
+        id,
+      }
+    });
+
+    res.status(200).send('OK');
   }
 
   async delete(req, res) {

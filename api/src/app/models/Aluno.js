@@ -13,7 +13,7 @@ class Aluno extends Model {
       {
         sequelize,
         timestamps: false,
-        tableName: 'aluno'
+        tableName: 'aluno',
       }
     );
 
