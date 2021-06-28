@@ -18,8 +18,8 @@ class CursoAluno extends Model {
   }
 
   static associate({Aluno, Curso}) {
-    Aluno.belongsToMany(Curso, { through: this });
-    Curso.belongsToMany(Aluno, { through: this });
+    Aluno.belongsToMany(Curso, { through: this, foreignKey: 'id_pessoa' });
+    Curso.belongsToMany(Aluno, { through: this, foreignKey: 'id_curso' });
   }
 }
 
