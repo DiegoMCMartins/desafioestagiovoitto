@@ -7,11 +7,18 @@ class AlunoController {
   }
 
   async read(req, res) {
-    // TODO
+    const {id} = req.body;
+    const aluno = await Aluno.findByPk(id);
+    if(aluno) {
+      return res.json(aluno.dataValues);
+    }
+    res.status(404).send('Aluno não foi encontrado, verifique se os dados estão corretos');
   }
 
   async create(req, res) {
-    // TODO
+    const aluno = req.body;
+    
+    res.send('OK');
   }
 
   async update(req, res) {
