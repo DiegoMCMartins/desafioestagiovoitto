@@ -24,7 +24,7 @@ const Dashboard = () => {
       }
     }
     fetchData();
-  }, [])
+  }, []);
 
   const render_modal_info_alunos = () => (
     <Modal open={modalInfos} onClose={()=>setModalInfos(false)} closeIcon>
@@ -65,6 +65,11 @@ const Dashboard = () => {
       <Popup
         trigger={<Button icon='plus' positive />}
         content="Adicionar curso para aluno"
+        basic
+      />
+      <Popup
+        trigger={<Button icon='list' primary />}
+        content="Ver cursos do aluno"
         basic
       />
       <Popup
