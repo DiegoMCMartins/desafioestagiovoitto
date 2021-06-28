@@ -18,7 +18,7 @@ class AlunoController {
   async create(req, res) {
     const aluno = req.body;
     //TODO: validate aluno
-    const newAluno = Aluno.create(aluno);
+    const newAluno = await Aluno.create(aluno);
     if(newAluno) {
       return res.status(200).send('Usuario criado com sucesso');
     }
@@ -31,7 +31,17 @@ class AlunoController {
   }
 
   async delete(req, res) {
-    // TODO
+    const {id} = req.body;
+    const rowDeleted = await Aluno.destroy({
+      where: {
+        id,
+      },
+    });
+    if(rowDeleted > 0) {
+      return res.send("Excluido");
+    }
+    
+    res.status(400).send('Id incorreto');
   }
 }
 
