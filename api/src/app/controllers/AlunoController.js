@@ -17,8 +17,13 @@ class AlunoController {
 
   async create(req, res) {
     const aluno = req.body;
-    
-    res.send('OK');
+    //TODO: validate aluno
+    const newAluno = Aluno.create(aluno);
+    if(newAluno) {
+      return res.status(200).send('Usuario criado com sucesso');
+    }
+
+    res.status(400).send('Algo deu errado');
   }
 
   async update(req, res) {
