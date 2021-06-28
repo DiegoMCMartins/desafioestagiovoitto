@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 
 // components
-import { Table, Button, Popup, Modal, Header, Icon, Form } from 'semantic-ui-react'
+import { Table, Button, Popup, Modal, Header, Icon, Form, List } from 'semantic-ui-react'
 
 //services
 import api from '../../services/api';
@@ -11,8 +11,10 @@ import { Container, InitialText } from './styles';
 
 const Dashboard = () => {
   const [alunos, setAlunos] = useState([]);
+  const [cursos, setCursos] = useState([]);
   const [currentInfo, setCurrentInfo] = useState([]);
   const [modalInfos, setModalInfos] = useState(false);
+  const [openSelectCursosModal, setOpenSelectCursosModal] = useState(false);
 
   useEffect(()=>{
     async function fetchData() {
@@ -25,6 +27,57 @@ const Dashboard = () => {
     }
     fetchData();
   }, []);
+
+  useEffect(() => {
+    async function fetchCursos() {
+      try{
+        const response = await api.get('/cursos');
+        setCursos(response.data);
+      } catch {
+        alert('Confira a api');
+      }
+    }
+
+    fetchCursos();
+  }, [])
+
+  const open_modal_select_courses = (data_aluno) => {
+    console.log(data_aluno)
+    setCurrentInfo(data_aluno);
+    setOpenSelectCursosModal(true);
+  }
+
+  const on_select_new_curso = async (curso) => {
+    const response = await api.post('/atribuirCursoAluno', {
+      id_aluno: currentInfo.id,
+      id_curso: curso.id,
+    });
+    console.log(response);
+    setOpenSelectCursosModal(false);
+  }
+
+  const render_modal_select_courses = () => (
+    <Modal 
+      open={openSelectCursosModal}
+      onClose={() => setOpenSelectCursosModal(false)}
+      closeIcon
+      size={'tiny'}>
+      <Header content={'Selecione um curso'} />
+      <Modal.Content>
+        <List divided selection size={'large'}>
+          {cursos.map(curso => {
+            return (
+              <List.Item onClick={() => on_select_new_curso(curso)}>
+                <List.Header>
+                  {curso.nome}
+                </List.Header>
+              </List.Item>
+            );
+          })}
+        </List>
+      </Modal.Content>
+    </Modal>
+  );
 
   const render_modal_info_alunos = () => (
     <Modal open={modalInfos} onClose={()=>setModalInfos(false)} closeIcon>
@@ -63,7 +116,13 @@ const Dashboard = () => {
         basic
       />
       <Popup
-        trigger={<Button icon='plus' positive />}
+        trigger={
+          <Button
+            icon='plus'
+            positive 
+            onClick={() => open_modal_select_courses(data_aluno)} 
+          />
+        }
         content="Adicionar curso para aluno"
         basic
       />
@@ -108,6 +167,7 @@ const Dashboard = () => {
         </Table.Body>
       </Table>
       {render_modal_info_alunos()}
+      {render_modal_select_courses()}
       <Button primary>Adicionar aluno</Button>
       <Button href="/" secondary>Ver instruções</Button>
     </Container>
