@@ -3,6 +3,7 @@ import { Router } from 'express';
 /** Controllers */
 import AlunosController from '../app/controllers/AlunoController';
 import CursosController from '../app/controllers/CursoController';
+import AtribuirCursoAluno from '../app/services/AtribuirCursoAlunoService';
 /**  * */
 
 const routes = new Router();
