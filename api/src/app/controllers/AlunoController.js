@@ -1,4 +1,5 @@
 import Aluno from '../models/Aluno';
+import atribuirCursoAluno from '../services/AtribuirCursoAlunoService';
 
 class AlunoController {
   async index(req, res) {
@@ -42,6 +43,13 @@ class AlunoController {
     }
     
     res.status(400).send('Id incorreto');
+  }
+
+  async addCurso(req, res) {
+    const {id_aluno, id_curso} = req.body;
+    await atribuirCursoAluno.execute({id_aluno, id_curso});
+
+    res.status(200).send('OK');
   }
 }
 
