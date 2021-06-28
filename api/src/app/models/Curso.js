@@ -1,9 +1,11 @@
-import { Model } from 'sequelize';
+import { Model, DataTypes } from 'sequelize';
 
 class Curso extends Model {
   static init(sequelize) {
     super.init(
-      {},
+      {
+        nome: DataTypes.STRING,
+      },
       {
         sequelize,
         timestamps: false,
