@@ -5,7 +5,7 @@ import Aluno from '../app/models/Aluno';
 import Curso from '../app/models/Curso';
 import CursoAluno from '../app/models/CursoAluno';
 
-const models = [Aluno, Curso, CursoAluno];
+const models = [Aluno, CursoAluno, Curso ];
 
 class Database {
   constructor() {
@@ -16,7 +16,7 @@ class Database {
     this.connection = new Sequelize(databaseConfig);
     models
       .map(model => model.init(this.connection))
-      .map(model => model.associate && model.associate(this.connection.models));
+      .map(model => model?.associate && model.associate(this.connection.models));
   }
 }
 
