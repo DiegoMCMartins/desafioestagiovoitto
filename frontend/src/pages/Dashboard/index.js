@@ -102,29 +102,64 @@ const Dashboard = () => {
     </Modal>
   );
 
-  const on_update_aluno_save_press = async () => {
-    let config = {
-      id: currentInfo.id,
-      ...updateInfo
+  const remove_blank_update_info = (updateInfo) => {
+    let newUpdateInfo = {};
+    const properties = Object.keys(updateInfo);
+
+    for(const property of properties) {
+      if(updateInfo[property].length > 0) {
+        newUpdateInfo = {...newUpdateInfo, [property]: updateInfo[property]}
+      }
     };
-    if(updateInfo.cep) {
-      const response = await cepApi.get(`/${updateInfo.cep}`);
-      const {localidade: cidade, uf: estado, erro} = response.data;
-      if(erro) {
-        alert('CEP invalido');
+
+    return newUpdateInfo;
+  }
+
+  const is_valid_cep = (cep) => {
+    const cepRegex = /^\d{8}$/;
+
+    return cepRegex.test(cep);
+  }
+
+  const on_update_aluno_save_press = async () => {
+    try{
+      const newUpdateInfo = remove_blank_update_info(updateInfo);
+      console.log(newUpdateInfo);
+      if(Object.keys(newUpdateInfo).length === 0) {
+        setModalInfos(false);
         return;
       }
-      config = {
-        ...config,
-        cidade,
-        estado,
+      let config = {
+        id: currentInfo.id,
+        ...newUpdateInfo
       };
+      if(newUpdateInfo.cep) {
+        const isValidCep = is_valid_cep(newUpdateInfo.cep);
+        if(!isValidCep) {
+          alert('Formato invalido de CEP');
+          return;
+        }
+        const response = await cepApi.get(`/${newUpdateInfo.cep}`);
+        const {localidade: cidade, uf: estado, erro} = response.data;
+        if(erro) {
+          alert('CEP não encontrado');
+          return;
+        }
+        config = {
+          ...config,
+          cidade,
+          estado,
+        };
+      } 
+      
+      await api.post('/updateAluno', config);
+      setRefresh(true);
+      setUpdateInfo({});
+      setModalInfos(false);
+    } catch(error) {
+      console.log(error);
     }
-
     
-    await api.post('/updateAluno', config);
-    setRefresh(true);
-    setModalInfos(false);
   };
 
   const render_modal_info_alunos = () => (
