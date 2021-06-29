@@ -39,7 +39,7 @@ const Dashboard = () => {
     }
 
     fetchCursos();
-  }, [])
+  }, []);
 
   const open_modal_select_courses = (data_aluno) => {
     console.log(data_aluno)
@@ -48,11 +48,10 @@ const Dashboard = () => {
   }
 
   const on_select_new_curso = async (curso) => {
-    const response = await api.post('/atribuirCursoAluno', {
+    await api.post('/atribuirCursoAluno', {
       id_aluno: currentInfo.id,
       id_curso: curso.id,
     });
-    console.log(response);
     setOpenSelectCursosModal(false);
   }
 
@@ -62,15 +61,15 @@ const Dashboard = () => {
       onClose={() => setOpenSelectCursosModal(false)}
       closeIcon
       size={'tiny'}>
-      <Header content={'Selecione um curso'} />
+      <Header content={`Selecione um curso para ${currentInfo.nome}`} />
       <Modal.Content>
         <List divided selection size={'large'}>
           {cursos.map(curso => {
             return (
               <List.Item onClick={() => on_select_new_curso(curso)}>
-                <List.Header>
+                <List.Content >
                   {curso.nome}
-                </List.Header>
+                </List.Content>
               </List.Item>
             );
           })}
@@ -85,9 +84,9 @@ const Dashboard = () => {
     <Modal.Content>
       <Form>
         <Form.Group widths='equal'>
-          <Form.Input fluid label='Nome' placeholder='Nome' />
-          <Form.Input fluid label='Email' placeholder='Email' />
-          <Form.Input fluid label='CEP' placeholder='CEP' />
+          <Form.Input fluid label='Nome' placeholder='Nome' value={currentInfo.nome} />
+          <Form.Input fluid label='Email' placeholder='Email' value={currentInfo.email} />
+          <Form.Input fluid label='CEP' placeholder='CEP' value={currentInfo.cep} />
         </Form.Group>
       </Form>
     </Modal.Content>
@@ -95,7 +94,7 @@ const Dashboard = () => {
       <Button onClick={()=>setModalInfos(false)} color='red'>
         <Icon name='remove' /> Cancelar
       </Button>
-      <Button color='green'>
+      <Button color='green' >
         <Icon name='checkmark' /> Salvar
       </Button>
     </Modal.Actions>
@@ -127,9 +126,10 @@ const Dashboard = () => {
         basic
       />
       <Popup
-        trigger={<Button icon='list' primary />}
+        trigger={<Button icon='list' primary/>}
         content="Ver cursos do aluno"
         basic
+        
       />
       <Popup
         trigger={<Button icon='close' negative />}
@@ -150,28 +150,59 @@ const Dashboard = () => {
   }
 
   return (
-    <Container>
-      <InitialText>Administrador de alunos</InitialText>
-      <Table celled>
-        <Table.Header>
-          <Table.Row>
-            <Table.HeaderCell>ID Aluno</Table.HeaderCell>
-            <Table.HeaderCell>Nome</Table.HeaderCell>
-            <Table.HeaderCell>Email</Table.HeaderCell>
-            <Table.HeaderCell>CEP</Table.HeaderCell>
-            <Table.HeaderCell>Ações</Table.HeaderCell>
-          </Table.Row>
-        </Table.Header>
-        <Table.Body>
-          { alunos.length > 0 ? render_alunos() : <h2>Nenhum dado registrado </h2> }
-        </Table.Body>
-      </Table>
-      {render_modal_info_alunos()}
-      {render_modal_select_courses()}
-      <Button primary>Adicionar aluno</Button>
-      <Button href="/" secondary>Ver instruções</Button>
-    </Container>
+    <>
+      <Container>
+        <InitialText>Administrador de alunos</InitialText>
+        <Table celled>
+          <Table.Header>
+            <Table.Row>
+              <Table.HeaderCell>ID Aluno</Table.HeaderCell>
+              <Table.HeaderCell>Nome</Table.HeaderCell>
+              <Table.HeaderCell>Email</Table.HeaderCell>
+              <Table.HeaderCell>CEP</Table.HeaderCell>
+              <Table.HeaderCell>Ações</Table.HeaderCell>
+            </Table.Row>
+          </Table.Header>
+          <Table.Body>
+            { alunos.length > 0 ? render_alunos() : <h2>Nenhum dado registrado </h2> }
+          </Table.Body>
+        </Table>
+        {render_modal_info_alunos()}
+        {render_modal_select_courses()}
+        <Button primary>Adicionar aluno</Button>
+        <Button href="/" secondary>Ver instruções</Button>
+      </Container>
+    </>
   );
 };
 
 export default Dashboard;
+
+
+// Test
+
+/*
+useEffect(() => {
+    if(successMessageVisible) {
+      setTimeout(() => {
+        setSuccessMessageVisible(false);
+      }, 2000);
+    };
+  }, [successMessageVisible]);
+
+  const toggle_success_message_visible = () => {
+    setSuccessMessageVisible(prev => !prev);
+  };
+
+<Transition visible={successMessageVisible} animation={'fly down'} unmountOnHide duration={500}>
+  <FloatMessage>
+    <Message
+      header={'Curso adicionado com sucesso'}
+      content={`O curso foi vinculado ao seu perfil`}
+      icon={<Icon name={'check'} />}
+      onDismiss={toggle_success_message_visible}
+      positive
+    />
+  </FloatMessage>
+</Transition>
+*/

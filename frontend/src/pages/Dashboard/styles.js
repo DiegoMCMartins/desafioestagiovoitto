@@ -14,4 +14,12 @@ export const Container = styled.div`
   padding:20px;
 `;
 
+export const FloatMessage = styled.div`
+  position: absolute;
+  bottom: 0;
+  right: 50px;
+  left: 50px;
+  zIndex: 100;
+`;
+
 
