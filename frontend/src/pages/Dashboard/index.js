@@ -14,6 +14,7 @@ const Dashboard = () => {
   const [alunos, setAlunos] = useState([]);
   const [cursos, setCursos] = useState([]);
   const [currentInfo, setCurrentInfo] = useState([]);
+  const [updateInfo, setUpdateInfo] = useState({});
   const [modalInfos, setModalInfos] = useState(false);
   const [openSelectCursosModal, setOpenSelectCursosModal] = useState(false);
 
@@ -79,15 +80,54 @@ const Dashboard = () => {
     </Modal>
   );
 
+  const on_update_aluno_save_press = async () => {
+    let config = {
+      id: currentInfo.id,
+      ...updateInfo
+    };
+    if(updateInfo.cep) {
+      const response = await cepApi.get(`/${updateInfo.cep}`);
+      const {localidade: cidade, uf: estado, erro} = response.data;
+      console.log(response.data);
+      if(erro) {
+        alert('CEP invalido');
+        return;
+      }
+      config = {
+        ...config,
+        cidade,
+        estado,
+      };
+    }
+
+    
+    await api.post('/updateAluno', config);
+    setModalInfos(false);
+  };
+
   const render_modal_info_alunos = () => (
     <Modal open={modalInfos} onClose={()=>setModalInfos(false)} closeIcon>
     <Header content={`Editando informações de ${currentInfo.nome}`} />
     <Modal.Content>
       <Form>
         <Form.Group widths='equal'>
-          <Form.Input fluid label='Nome' placeholder='Nome' value={currentInfo.nome} />
-          <Form.Input fluid label='Email' placeholder='Email' value={currentInfo.email} />
-          <Form.Input fluid label='CEP' placeholder='CEP' value={currentInfo.cep} />
+          <Form.Input 
+            fluid label='Nome'
+            placeholder={currentInfo.nome}
+            onChange={(_, {value}) => setUpdateInfo(prev => ({...prev, nome: value}))}
+          />
+          <Form.Input 
+            fluid
+            label='Email'
+            placeholder={currentInfo.email}
+            onChange={(_, {value}) => setUpdateInfo(prev => ({...prev, email: value}))}
+          />
+          <Form.Input 
+            fluid
+            label='CEP'
+            placeholder={currentInfo.cep}
+            onChange={(_, {value}) => setUpdateInfo(prev => ({...prev, cep: value}))}
+          />
         </Form.Group>
       </Form>
     </Modal.Content>
@@ -95,7 +135,7 @@ const Dashboard = () => {
       <Button onClick={()=>setModalInfos(false)} color='red'>
         <Icon name='remove' /> Cancelar
       </Button>
-      <Button color='green' >
+      <Button color='green' onClick={() => on_update_aluno_save_press()}>
         <Icon name='checkmark' /> Salvar
       </Button>
     </Modal.Actions>
