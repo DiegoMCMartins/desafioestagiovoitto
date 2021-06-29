@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 
 // components
-import { Table, Button, Popup, Modal, Header, Icon, Form, List } from 'semantic-ui-react'
+import { Table, Button, Popup, Modal, Header, Icon, Form, List, Loader, Dimmer, Segment } from 'semantic-ui-react'
 
 //services
 import api from '../../services/api';
@@ -17,6 +17,8 @@ const Dashboard = () => {
   const [updateInfo, setUpdateInfo] = useState({});
   const [modalInfos, setModalInfos] = useState(false);
   const [openSelectCursosModal, setOpenSelectCursosModal] = useState(false);
+  const [refresh, setRefresh] = useState(true);
+  const [loadingCursos, setLoadingCursos] = useState(false);
 
   useEffect(()=>{
     async function fetchData() {
@@ -27,26 +29,37 @@ const Dashboard = () => {
         alert('Confira a api');
       }
     }
-    fetchData();
-  }, []);
 
-  useEffect(() => {
-    async function fetchCursos() {
-      try{
-        const response = await api.get('/cursos');
-        setCursos(response.data);
-      } catch(error) {
-        alert(error);
-      }
+    if(refresh) {
+      fetchData();
+      setRefresh(false);
     }
 
-    fetchCursos();
-  }, []);
+  }, [refresh]);
 
-  const open_modal_select_courses = (data_aluno) => {
-    console.log(data_aluno)
-    setCurrentInfo(data_aluno);
-    setOpenSelectCursosModal(true);
+  async function fetchCursos({id}) {
+    try{
+      const response = await api.post('/getAvailableCursos', {
+        id,
+      });
+      setCursos(response.data);
+    } catch(error) {
+      console.log(error);
+      alert(error);
+    }
+  }
+
+  const open_modal_select_cursos = async (data_aluno) => {
+    try{
+      setLoadingCursos(true);
+      setCurrentInfo(data_aluno);
+      setOpenSelectCursosModal(true);
+      await fetchCursos(data_aluno);
+    } catch(error) {
+      alert(error);
+    } finally {
+      setLoadingCursos(false);
+    }
   }
 
   const on_select_new_curso = async (curso) => {
@@ -57,7 +70,7 @@ const Dashboard = () => {
     setOpenSelectCursosModal(false);
   }
 
-  const render_modal_select_courses = () => (
+  const render_modal_select_cursos = () => (
     <Modal 
       open={openSelectCursosModal}
       onClose={() => setOpenSelectCursosModal(false)}
@@ -65,17 +78,26 @@ const Dashboard = () => {
       size={'tiny'}>
       <Header content={`Selecione um curso para ${currentInfo.nome}`} />
       <Modal.Content>
-        <List divided selection size={'large'}>
-          {cursos.map(curso => {
-            return (
-              <List.Item onClick={() => on_select_new_curso(curso)}>
-                <List.Content >
-                  {curso.nome}
-                </List.Content>
-              </List.Item>
-            );
-          })}
-        </List>
+        {loadingCursos 
+          ? (
+            'Carregando ...'
+          ) : (
+              <List divided selection size={'large'}>
+                {cursos.length > 0 
+                  ? cursos.map(curso => {
+                      return (
+                        <List.Item onClick={() => on_select_new_curso(curso)}>
+                          <List.Content >
+                            {curso.nome}
+                          </List.Content>
+                        </List.Item>
+                      );
+                    })
+                  : <List.Header>Todos os cursos disponíveis já foram atribuídos</List.Header>
+                }
+              </List> 
+          )
+        }
       </Modal.Content>
     </Modal>
   );
@@ -101,6 +123,7 @@ const Dashboard = () => {
 
     
     await api.post('/updateAluno', config);
+    setRefresh(true);
     setModalInfos(false);
   };
 
@@ -159,7 +182,7 @@ const Dashboard = () => {
           <Button
             icon='plus'
             positive 
-            onClick={() => open_modal_select_courses(data_aluno)} 
+            onClick={() => open_modal_select_cursos(data_aluno)} 
           />
         }
         content="Adicionar curso para aluno"
@@ -208,7 +231,7 @@ const Dashboard = () => {
           </Table.Body>
         </Table>
         {render_modal_info_alunos()}
-        {render_modal_select_courses()}
+        {render_modal_select_cursos()}
         <Button primary>Adicionar aluno</Button>
         <Button href="/" secondary>Ver instruções</Button>
       </Container>
