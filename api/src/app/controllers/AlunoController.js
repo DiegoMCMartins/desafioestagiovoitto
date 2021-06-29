@@ -1,5 +1,7 @@
 import Aluno from '../models/Aluno';
+import Curso from '../models/Curso';
 import atribuirCursoAluno from '../services/AtribuirCursoAlunoService';
+import {Op} from 'sequelize';
 
 class AlunoController {
   async index(req, res) {
@@ -70,6 +72,25 @@ class AlunoController {
     }
 
     res.status(404).send('Não foi encontrado nenhum aluno com esse id');
+  }
+
+  async getAvailabelCursos(req, res) {
+    const {id} = req.body;
+    const aluno = await Aluno.findByPk(id);
+    if(aluno) {
+      const cursos = await aluno.getCursos();
+      const cursosIds = cursos.map(({dataValues: {id}}) => id);
+      const availableCursos = await Curso.findAll({
+        where: {
+          id: {
+            [Op.notIn]: cursosIds,
+          }
+        }
+      });
+      return res.json(availableCursos);
+    }
+
+    res.status(404).send('Aluno não encontrado com esse id');
   }
 }
 

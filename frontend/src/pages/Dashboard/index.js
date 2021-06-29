@@ -88,7 +88,6 @@ const Dashboard = () => {
     if(updateInfo.cep) {
       const response = await cepApi.get(`/${updateInfo.cep}`);
       const {localidade: cidade, uf: estado, erro} = response.data;
-      console.log(response.data);
       if(erro) {
         alert('CEP invalido');
         return;
