@@ -58,6 +58,19 @@ class AlunoController {
 
     res.status(200).send('OK');
   }
+
+  async getCursos(req, res) {
+    const {id} = req.body;
+    const aluno = await Aluno.findByPk(id);
+    if(aluno) {
+      const cursos = await aluno.getCursos();
+      const formattedCursos = cursos.map(({dataValues: info}) => ({id: info.id, nome: info.nome}));
+      console.log(formattedCursos);
+      return res.status(200).json(formattedCursos);
+    }
+
+    res.status(404).send('Não foi encontrado nenhum aluno com esse id');
+  }
 }
 
 export default new AlunoController();
