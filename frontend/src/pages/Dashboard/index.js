@@ -5,6 +5,7 @@ import { Table, Button, Popup, Modal, Header, Icon, Form, List } from 'semantic-
 
 //services
 import api from '../../services/api';
+import cepApi from '../../services/cepApi';
 
 // styles
 import { Container, InitialText } from './styles';
@@ -33,8 +34,8 @@ const Dashboard = () => {
       try{
         const response = await api.get('/cursos');
         setCursos(response.data);
-      } catch {
-        alert('Confira a api');
+      } catch(error) {
+        alert(error);
       }
     }
 

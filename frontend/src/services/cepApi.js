@@ -5,8 +5,8 @@ const cepApi = axios.create({
 });
 
 cepApi.interceptors.request.use((config) => {
-    console.log(config);
-    return config;
+    const newConfig = {...config, url: `${config.url}/json`};
+    return newConfig;
 }, (error) => {
     return Promise.reject(error);
 });
