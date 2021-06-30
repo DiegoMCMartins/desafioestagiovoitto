@@ -439,7 +439,12 @@ const Dashboard = () => {
       if(newUpdateInfo.cep) {
         const isValidCep = is_valid_cep(newUpdateInfo.cep);
         if(!isValidCep) {
-          alert('Formato invalido de CEP');
+          // alert('Formato invalido de CEP');
+          dispatchMessage({
+            type: 'ERROR',
+            header: 'Formato de CEP invalido',
+            content: 'Verifique se o CEP tem 8 dígitos e contenha somente dígitos'
+          })
           return;
         }
         const response = await cepApi.get(`/${newUpdateInfo.cep}`);
@@ -526,7 +531,7 @@ const Dashboard = () => {
         
       />
       <Popup
-        trigger={<Button icon='close' negative onClick={toggle_success_message_visible}/>}
+        trigger={<Button icon='close' negative />}
         content="Excluir aluno"
         basic
       />
@@ -555,13 +560,6 @@ const Dashboard = () => {
     dispatchMessage({type: 'DISMISS'});
   }
 
-  const toggle_success_message_visible = () => {
-    dispatchMessage({
-      type: 'WARNING',
-      header: 'Curso adicionado com sucesso',
-      content: 'O curso foi vinculado ao seu perfil',
-    });
-  };
 
   return (
     <>
@@ -598,8 +596,9 @@ const Dashboard = () => {
               {...messageProps}
             />
           </FloatMessage>
+          
         )}
-        </Transition.Group>
+      </Transition.Group>
     </>
   );
 };

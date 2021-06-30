@@ -19,6 +19,7 @@ export const FloatMessage = styled.div`
   top: 20px;
   right: 50px;
   left: 50px;
+  z-index: 10000;
 `;
 
 
