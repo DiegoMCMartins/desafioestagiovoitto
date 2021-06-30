@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 
 // components
 import { Table, Button, Popup, Modal, Header, Icon, Form, List } from 'semantic-ui-react'
@@ -150,7 +150,7 @@ const Dashboard = () => {
       console.log(error);
       alert(error);
     }
-  }
+  };
 
   const open_modal_select_cursos = async (data_aluno) => {
     try{
@@ -163,27 +163,19 @@ const Dashboard = () => {
     } finally {
       setLoadingCursos(false);
     }
-  }
+  };
 
   const on_select_new_curso = async (curso) => {
-    await api.post('/atribuirCursoAluno', {
-      id_aluno: currentInfo.id,
-      id_curso: curso.id,
-    });
-    setOpenSelectCursosModal(false);
-  }
-
-  const render_modal_select_cursos = () => {
-    return (
-      <ModalSelectCursos
-        open={openSelectCursosModal}
-        onClose={() => setOpenSelectCursosModal(false)}
-        title={`Selecione o curso para ${currentInfo.nome}`}
-        loading={loadingCursos}
-        data={cursos}
-        onCursoClick={(curso) => on_select_new_curso(curso)}
-      />
-    );
+    try{
+      await api.post('/atribuirCursoAluno', {
+        id_aluno: currentInfo.id,
+        id_curso: curso.id,
+      });
+    } catch(error) {
+      alert(error);
+    } finally {
+      setOpenSelectCursosModal(false);
+    }
   };
 
   const remove_blank_update_info = (updateInfo) => {
@@ -244,6 +236,25 @@ const Dashboard = () => {
     }
     
   };
+    
+
+  function open_info_alunos(data_aluno){
+    setCurrentInfo(data_aluno);
+    setModalInfos(true);
+  }
+
+  const render_modal_select_cursos = () => {
+    return (
+      <ModalSelectCursos
+        open={openSelectCursosModal}
+        onClose={() => setOpenSelectCursosModal(false)}
+        title={`Selecione o curso para ${currentInfo.nome}`}
+        loading={loadingCursos}
+        data={cursos}
+        onCursoClick={(curso) => on_select_new_curso(curso)}
+      />
+    );
+  };
 
   const render_modal_info_alunos = () => {
     return (
@@ -255,13 +266,7 @@ const Dashboard = () => {
         alunoInfo={currentInfo}
       />
     );
-  }
-    
-
-  function open_info_alunos(data_aluno){
-    setCurrentInfo(data_aluno);
-    setModalInfos(true);
-  }
+  };
 
   function render_actions(data_aluno){
     return <center>
@@ -293,7 +298,7 @@ const Dashboard = () => {
         basic
       />
     </center>
-  }
+  };
 
   function render_alunos(){
     return alunos.map((v)=><Table.Row>
@@ -303,7 +308,7 @@ const Dashboard = () => {
       <Table.Cell>{v.cep}</Table.Cell>
       <Table.Cell>{render_actions(v)}</Table.Cell>
     </Table.Row>)
-  }
+  };
 
   return (
     <>
