@@ -15,11 +15,10 @@ export const Container = styled.div`
 `;
 
 export const FloatMessage = styled.div`
-  position: absolute;
-  bottom: 0;
+  position: fixed;
+  top: 20px;
   right: 50px;
   left: 50px;
-  zIndex: 100;
 `;
 
 

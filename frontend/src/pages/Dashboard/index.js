@@ -1,14 +1,14 @@
 import React, { useEffect, useReducer, useState } from 'react';
 
 // components
-import { Table, Button, Popup, Modal, Header, Icon, Form, List, Divider } from 'semantic-ui-react'
+import { Table, Button, Popup, Modal, Header, Icon, Form, List, Divider, Message, Transition } from 'semantic-ui-react'
 
 //services
 import api from '../../services/api';
 import cepApi from '../../services/cepApi';
 
 // styles
-import { Container, InitialText } from './styles';
+import { Container, InitialText, FloatMessage } from './styles';
 
 // Components
 const ModalSelectCursos = ({
@@ -245,13 +245,73 @@ const useModalCursoReducer = () => {
   return useReducer(reducer, initialState);
 }
 
+const useMessageReducer = () => {
+  const initialState = {
+    header: '',
+    content: '',
+    icon: '',
+    positive: false,
+    negative: false,
+    warning: false,
+    visible: false,
+  }
+
+  const reducer = (state, action) => {
+    switch(action.type) {
+      case 'SUCCESS': {
+        return {
+          ...state,
+          header: action.header,
+          content: action.content,
+          visible: true,
+          positive: true,
+          icon: 'check'
+        }
+      }
+      case 'WARNING': {
+        return {
+          ...state,
+          header: action.header,
+          content: action.content,
+          visible: true,
+          warning: true,
+          icon: 'warning'
+        }
+      }
+      case 'ERROR': {
+        return {
+          ...state,
+          header: action.header,
+          content: action.content,
+          visible: true,
+          negative: true,
+          icon: 'frown outline'
+        }
+      }
+      case 'DISMISS': {
+        return {
+          ...initialState,
+        }
+      }
+      default: {
+        return {
+          ...state,
+        }
+      }
+    }
+  }
+
+  return useReducer(reducer, initialState);
+}
+
 const Dashboard = () => {
   const [alunos, setAlunos] = useState([]);
   const [cursos, setCursos] = useState({aluno: [], available: []});
   const [currentInfo, setCurrentInfo] = useState([]);
   const [modalInfos, setModalInfos] = useState(false);
   const [refresh, setRefresh] = useState(true);
-  const [modalCursoProps, dispatch] = useModalCursoReducer(currentInfo.name);
+  const [modalCursoProps, dispatchModalCurso] = useModalCursoReducer(currentInfo.name);
+  const [messageProps, dispatchMessage]= useMessageReducer();
 
   useEffect(()=>{
     async function fetchData() {
@@ -297,28 +357,28 @@ const Dashboard = () => {
   const open_modal_select_cursos = async (data_aluno) => {
     try{
       setCurrentInfo(data_aluno);
-      dispatch({type: 'OPEN_SELECT_CURSOS_MODAL', payload: data_aluno.nome}); // Test for useModalReducer
+      dispatchModalCurso({type: 'OPEN_SELECT_CURSOS_MODAL', payload: data_aluno.nome}); // Test for useModalReducer
       await Promise.all([fetchAvailableCursos(data_aluno), fetchAlunoCursos(data_aluno)]);
     } catch(error) {
       alert(error);
     } finally {
-      dispatch({type: 'FETCH_FINISHED'});
+      dispatchModalCurso({type: 'FETCH_FINISHED'});
     }
   };
 
   const close_modal_select_cursos = () => {
-    dispatch({type: 'CLOSE_MODAL'});
+    dispatchModalCurso({type: 'CLOSE_MODAL'});
   }
 
   const open_modal_show_aluno_cursos = async (data_aluno) => {
     try {
       setCurrentInfo(data_aluno);
-      dispatch({type: 'OPEN_ALUNO_CURSOS_MODAL', payload: data_aluno.nome});
+      dispatchModalCurso({type: 'OPEN_ALUNO_CURSOS_MODAL', payload: data_aluno.nome});
       await fetchAlunoCursos(data_aluno);
     } catch(error) {
       alert(error);
     } finally {
-      dispatch({type: 'FETCH_FINISHED'});
+      dispatchModalCurso({type: 'FETCH_FINISHED'});
     }
   }
 
@@ -466,7 +526,7 @@ const Dashboard = () => {
         
       />
       <Popup
-        trigger={<Button icon='close' negative />}
+        trigger={<Button icon='close' negative onClick={toggle_success_message_visible}/>}
         content="Excluir aluno"
         basic
       />
@@ -481,6 +541,26 @@ const Dashboard = () => {
       <Table.Cell>{v.cep}</Table.Cell>
       <Table.Cell>{render_actions(v)}</Table.Cell>
     </Table.Row>)
+  };
+
+  useEffect(() => {
+    if(messageProps.visible) {
+      setTimeout(() => {
+        return dispatchMessage({type: 'DISMISS'});
+      }, 2000);
+    };
+  }, [messageProps, dispatchMessage]);
+
+  const close_message = () => {
+    dispatchMessage({type: 'DISMISS'});
+  }
+
+  const toggle_success_message_visible = () => {
+    dispatchMessage({
+      type: 'WARNING',
+      header: 'Curso adicionado com sucesso',
+      content: 'O curso foi vinculado ao seu perfil',
+    });
   };
 
   return (
@@ -506,6 +586,20 @@ const Dashboard = () => {
         <Button primary>Adicionar aluno</Button>
         <Button href="/" secondary>Ver instruções</Button>
       </Container>
+      <Transition.Group
+        animation={'fade down'}
+        duration={400}
+      >
+        {messageProps.visible && (
+          <FloatMessage>
+            <Message
+              icon={<Icon name={messageProps.icon} />}
+              onDismiss={close_message}
+              {...messageProps}
+            />
+          </FloatMessage>
+        )}
+        </Transition.Group>
     </>
   );
 };
