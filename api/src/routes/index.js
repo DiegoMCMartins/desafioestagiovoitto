@@ -16,6 +16,7 @@ routes.post('/updateAluno', AlunosController.update);
 routes.post('/atribuirCursoAluno', AlunosController.addCurso);
 routes.post('/getCursos', AlunosController.getCursos);
 routes.post('/getAvailableCursos', AlunosController.getAvailableCursos);
+routes.post('/removeCursoAluno', AlunosController.removeCurso);
 /** */
 
 /** Curso routes */

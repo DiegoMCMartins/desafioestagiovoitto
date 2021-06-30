@@ -61,6 +61,13 @@ class AlunoController {
     res.status(200).send('OK');
   }
 
+  async removeCurso(req, res) {
+    const {id_aluno, id_curso} = req.body;
+    await atribuirCursoAluno.remove({id_aluno, id_curso});
+
+    res.status(200).send('OK');
+  }
+
   async getCursos(req, res) {
     const {id} = req.body;
     const aluno = await Aluno.findByPk(id);
