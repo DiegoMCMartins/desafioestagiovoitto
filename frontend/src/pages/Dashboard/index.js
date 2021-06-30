@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 
 // components
-import { Table, Button, Popup, Modal, Header, Icon, Form, List } from 'semantic-ui-react'
+import { Table, Button, Popup, Modal, Header, Icon, Form, List, Divider } from 'semantic-ui-react'
 
 //services
 import api from '../../services/api';
@@ -11,7 +11,17 @@ import cepApi from '../../services/cepApi';
 import { Container, InitialText } from './styles';
 
 // Components
-const ModalSelectCursos = ({open, onClose, title, loading, data, onCursoClick}) => {
+const ModalSelectCursos = ({
+  open,
+  onClose,
+  title,
+  loading,
+  onAddCurso,
+  onRemoveCurso,
+  availableCursos,
+  alunoCursos,
+  hideAvailableCursos
+}) => {
 
   const Loading = () => {
     return (
@@ -19,9 +29,15 @@ const ModalSelectCursos = ({open, onClose, title, loading, data, onCursoClick}) 
     );
   }
 
-  const CursoListItem = ({curso}) => {
+  const CursosListItem = ({curso, buttonContent, buttonIcon, buttonColor, onClick}) => {
     return (
-      <List.Item onClick={() => onCursoClick(curso)}>
+      <List.Item>
+        <List.Content floated={'right'}>
+          <Button color={buttonColor} onClick={onClick}>
+            <Icon name={buttonIcon} />
+            {buttonContent}
+          </Button>
+        </List.Content>
         <List.Content >
           {curso.nome}
         </List.Content>
@@ -29,20 +45,77 @@ const ModalSelectCursos = ({open, onClose, title, loading, data, onCursoClick}) 
     );
   }
 
-  const CursoListEmpty = () => {
+  const EmptyList = ({content}) => {
     return (
-      <List.Header>Todos os cursos disponíveis já foram atribuídos</List.Header>
+      <p>{content}</p>
+    );
+  }
+
+  const AvailableCursosList = () => {
+    const render_list = () => {
+      if(availableCursos.length === 0) {
+        return <EmptyList content={'Todos os cursos foram atribuidos ao aluno'} />
+      }
+
+      return (
+        availableCursos.map(curso => (
+          <CursosListItem
+            curso={curso}
+            buttonContent={'Adicionar'}
+            buttonIcon={'add'}
+            buttonColor={'green'}
+            onClick={() => onAddCurso(curso)}
+          />
+        ))
+      );
+    }
+    return (
+      <List size={'large'}>
+        <Header as={"h3"}>Disponiveis</Header>
+        {render_list()}
+      </List>
+    );
+  }
+
+  const AlunoCursosList = ({curso}) => {
+    
+
+    const render_list = () => {
+      if(alunoCursos.length === 0) {
+        return <EmptyList content={'Nenhum curso atribuido'} />
+      }
+
+      return (
+        alunoCursos.map(curso => (
+          <CursosListItem
+            curso={curso}
+            buttonContent={'Remover'}
+            buttonIcon={'remove'}
+            buttonColor={'red'}
+            onClick={() => onRemoveCurso(curso)}
+          />
+        ))
+      )
+    }
+    return (
+      <List size={'large'}>
+        <Header as={"h3"}>Adquiridos</Header>
+        {render_list()}
+      </List>
     );
   }
 
   const CursosList = () => {
     return (
-      <List divided selection size={'large'}>
-        {data.length > 0 
-          ? data.map(curso => <CursoListItem curso={curso} />)
-          : <CursoListEmpty />
-        }
-      </List>
+      <>
+        <AlunoCursosList />
+        {!hideAvailableCursos ? (
+          <>
+            <Divider />
+            <AvailableCursosList />
+          </>
+        ) : null}
+      </>
     );
   }
 
@@ -51,8 +124,10 @@ const ModalSelectCursos = ({open, onClose, title, loading, data, onCursoClick}) 
       open={open}
       onClose={onClose}
       closeIcon
-      size={'tiny'}>
-      <Header>{title}</Header>
+      size={'small'}>
+      <Modal.Header>
+        <Header as={'h3'}>{title}</Header>
+      </Modal.Header>
       <Modal.Content>
         {loading ? <Loading /> : <CursosList />}
       </Modal.Content>
@@ -116,7 +191,7 @@ const ModalInfoAlunos = ({title, onClose, open, onSavePress, alunoInfo}) => {
 
 const Dashboard = () => {
   const [alunos, setAlunos] = useState([]);
-  const [cursos, setCursos] = useState([]);
+  const [cursos, setCursos] = useState({aluno: [], available: []});
   const [currentInfo, setCurrentInfo] = useState([]);
   const [modalInfos, setModalInfos] = useState(false);
   const [openSelectCursosModal, setOpenSelectCursosModal] = useState(false);
@@ -140,12 +215,24 @@ const Dashboard = () => {
 
   }, [refresh]);
 
-  async function fetchCursos({id}) {
+  async function fetchAvailableCursos({id}) {
     try{
       const response = await api.post('/getAvailableCursos', {
         id,
       });
-      setCursos(response.data);
+      setCursos(prev => ({...prev, available: response.data}));
+    } catch(error) {
+      console.log(error);
+      alert(error);
+    }
+  };
+
+  async function fetchAlunoCursos({id}) {
+    try{
+      const response = await api.post('/getCursos', {
+        id,
+      });
+      setCursos(prev => ({...prev, aluno: response.data}));
     } catch(error) {
       console.log(error);
       alert(error);
@@ -157,7 +244,7 @@ const Dashboard = () => {
       setLoadingCursos(true);
       setCurrentInfo(data_aluno);
       setOpenSelectCursosModal(true);
-      await fetchCursos(data_aluno);
+      await Promise.all([fetchAvailableCursos(data_aluno), fetchAlunoCursos(data_aluno)]);  
     } catch(error) {
       alert(error);
     } finally {
@@ -200,7 +287,6 @@ const Dashboard = () => {
   const on_update_aluno_save_press = async (updateInfo) => {
     try{
       const newUpdateInfo = remove_blank_update_info(updateInfo);
-      console.log(newUpdateInfo);
       if(Object.keys(newUpdateInfo).length === 0) {
         setModalInfos(false);
         return;
@@ -250,7 +336,8 @@ const Dashboard = () => {
         onClose={() => setOpenSelectCursosModal(false)}
         title={`Selecione o curso para ${currentInfo.nome}`}
         loading={loadingCursos}
-        data={cursos}
+        availableCursos={cursos.available}
+        alunoCursos={cursos.aluno}
         onCursoClick={(curso) => on_select_new_curso(curso)}
       />
     );
