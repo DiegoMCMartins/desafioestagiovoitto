@@ -334,6 +334,18 @@ const Dashboard = () => {
     }
   };
 
+  const on_remove_curso = async (curso) => {
+    try{
+      await api.post('/removeCursoAluno', {
+        id_aluno: currentInfo.id,
+        id_curso: curso.id,
+      });
+      await Promise.all([fetchAvailableCursos(currentInfo), fetchAlunoCursos(currentInfo)]);
+    } catch(error) {
+      alert(error);
+    }
+  };
+
   const remove_blank_update_info = (updateInfo) => {
     let newUpdateInfo = {};
     const properties = Object.keys(updateInfo);
@@ -406,7 +418,7 @@ const Dashboard = () => {
         availableCursos={cursos.available}
         alunoCursos={cursos.aluno}
         onAddCurso={on_save_new_curso}
-        onRemoveCurso={console.log}
+        onRemoveCurso={on_remove_curso}
       />
     );
   };
