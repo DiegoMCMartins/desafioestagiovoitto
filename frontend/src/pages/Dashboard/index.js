@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 
 // components
-import { Table, Button, Popup, Modal, Header, Icon, Form, List, Loader, Dimmer, Segment } from 'semantic-ui-react'
+import { Table, Button, Popup, Modal, Header, Icon, Form, List } from 'semantic-ui-react'
 
 //services
 import api from '../../services/api';
@@ -10,11 +10,114 @@ import cepApi from '../../services/cepApi';
 // styles
 import { Container, InitialText } from './styles';
 
+// Components
+const ModalSelectCursos = ({open, onClose, title, loading, data, onCursoClick}) => {
+
+  const Loading = () => {
+    return (
+      <p>Carregando ...</p>
+    );
+  }
+
+  const CursoListItem = ({curso}) => {
+    return (
+      <List.Item onClick={() => onCursoClick(curso)}>
+        <List.Content >
+          {curso.nome}
+        </List.Content>
+      </List.Item>
+    );
+  }
+
+  const CursoListEmpty = () => {
+    return (
+      <List.Header>Todos os cursos disponíveis já foram atribuídos</List.Header>
+    );
+  }
+
+  const CursosList = () => {
+    return (
+      <List divided selection size={'large'}>
+        {data.length > 0 
+          ? data.map(curso => <CursoListItem curso={curso} />)
+          : <CursoListEmpty />
+        }
+      </List>
+    );
+  }
+
+  return (
+    <Modal 
+      open={open}
+      onClose={onClose}
+      closeIcon
+      size={'tiny'}>
+      <Header>{title}</Header>
+      <Modal.Content>
+        {loading ? <Loading /> : <CursosList />}
+      </Modal.Content>
+    </Modal>
+  );
+}
+
+const ModalInfoAlunos = ({title, onClose, open, onSavePress, alunoInfo}) => {
+  const [updateInfo, setUpdateInfo] = useState({});
+
+  const clearUpdateInfo = () => {
+    setUpdateInfo({});
+  }
+
+  useEffect(() => {
+    if(open) {
+      return;
+    }
+
+    clearUpdateInfo();
+  }, [open]);
+  
+  return (
+    <Modal open={open} onClose={onClose} closeIcon>
+      <Header content={title} />
+      <Modal.Content>
+      <Form>
+          <Form.Group widths='equal'>
+            <Form.Input 
+              fluid
+              label='Nome'
+              placeholder={alunoInfo.nome}
+              onChange={(_, {value}) => setUpdateInfo(prev => ({...prev, nome: value}))}
+            />
+            <Form.Input 
+              fluid
+              label='Email'
+              placeholder={alunoInfo.email}
+              onChange={(_, {value}) => setUpdateInfo(prev => ({...prev, email: value}))}
+            />
+            <Form.Input 
+              fluid
+              label='CEP'
+              placeholder={alunoInfo.cep}
+              onChange={(_, {value}) => setUpdateInfo(prev => ({...prev, cep: value}))}
+            />
+          </Form.Group>
+        </Form>
+      </Modal.Content>
+      <Modal.Actions>
+        <Button onClick={onClose} color='red'>
+          <Icon name='remove' /> Cancelar
+        </Button>
+        <Button color='green' onClick={() => onSavePress(updateInfo)}>
+          <Icon name='checkmark' /> Salvar
+        </Button>
+      </Modal.Actions>
+    </Modal>
+  );
+}
+
 const Dashboard = () => {
   const [alunos, setAlunos] = useState([]);
   const [cursos, setCursos] = useState([]);
   const [currentInfo, setCurrentInfo] = useState([]);
-  const [updateInfo, setUpdateInfo] = useState({});
   const [modalInfos, setModalInfos] = useState(false);
   const [openSelectCursosModal, setOpenSelectCursosModal] = useState(false);
   const [refresh, setRefresh] = useState(true);
@@ -70,37 +173,18 @@ const Dashboard = () => {
     setOpenSelectCursosModal(false);
   }
 
-  const render_modal_select_cursos = () => (
-    <Modal 
-      open={openSelectCursosModal}
-      onClose={() => setOpenSelectCursosModal(false)}
-      closeIcon
-      size={'tiny'}>
-      <Header content={`Selecione um curso para ${currentInfo.nome}`} />
-      <Modal.Content>
-        {loadingCursos 
-          ? (
-            'Carregando ...'
-          ) : (
-              <List divided selection size={'large'}>
-                {cursos.length > 0 
-                  ? cursos.map(curso => {
-                      return (
-                        <List.Item onClick={() => on_select_new_curso(curso)}>
-                          <List.Content >
-                            {curso.nome}
-                          </List.Content>
-                        </List.Item>
-                      );
-                    })
-                  : <List.Header>Todos os cursos disponíveis já foram atribuídos</List.Header>
-                }
-              </List> 
-          )
-        }
-      </Modal.Content>
-    </Modal>
-  );
+  const render_modal_select_cursos = () => {
+    return (
+      <ModalSelectCursos
+        open={openSelectCursosModal}
+        onClose={() => setOpenSelectCursosModal(false)}
+        title={`Selecione o curso para ${currentInfo.nome}`}
+        loading={loadingCursos}
+        data={cursos}
+        onCursoClick={(curso) => on_select_new_curso(curso)}
+      />
+    );
+  };
 
   const remove_blank_update_info = (updateInfo) => {
     let newUpdateInfo = {};
@@ -121,7 +205,7 @@ const Dashboard = () => {
     return cepRegex.test(cep);
   }
 
-  const on_update_aluno_save_press = async () => {
+  const on_update_aluno_save_press = async (updateInfo) => {
     try{
       const newUpdateInfo = remove_blank_update_info(updateInfo);
       console.log(newUpdateInfo);
@@ -154,7 +238,6 @@ const Dashboard = () => {
       
       await api.post('/updateAluno', config);
       setRefresh(true);
-      setUpdateInfo({});
       setModalInfos(false);
     } catch(error) {
       console.log(error);
@@ -162,47 +245,22 @@ const Dashboard = () => {
     
   };
 
-  const render_modal_info_alunos = () => (
-    <Modal open={modalInfos} onClose={()=>setModalInfos(false)} closeIcon>
-    <Header content={`Editando informações de ${currentInfo.nome}`} />
-    <Modal.Content>
-      <Form>
-        <Form.Group widths='equal'>
-          <Form.Input 
-            fluid label='Nome'
-            placeholder={currentInfo.nome}
-            onChange={(_, {value}) => setUpdateInfo(prev => ({...prev, nome: value}))}
-          />
-          <Form.Input 
-            fluid
-            label='Email'
-            placeholder={currentInfo.email}
-            onChange={(_, {value}) => setUpdateInfo(prev => ({...prev, email: value}))}
-          />
-          <Form.Input 
-            fluid
-            label='CEP'
-            placeholder={currentInfo.cep}
-            onChange={(_, {value}) => setUpdateInfo(prev => ({...prev, cep: value}))}
-          />
-        </Form.Group>
-      </Form>
-    </Modal.Content>
-    <Modal.Actions>
-      <Button onClick={()=>setModalInfos(false)} color='red'>
-        <Icon name='remove' /> Cancelar
-      </Button>
-      <Button color='green' onClick={() => on_update_aluno_save_press()}>
-        <Icon name='checkmark' /> Salvar
-      </Button>
-    </Modal.Actions>
-  </Modal>
-  )
+  const render_modal_info_alunos = () => {
+    return (
+      <ModalInfoAlunos 
+        title={`Editando informações de ${currentInfo.nome}`}
+        onClose={() => setModalInfos(false)}
+        open={modalInfos}
+        onSavePress={(updateInfo) => on_update_aluno_save_press(updateInfo)}
+        alunoInfo={currentInfo}
+      />
+    );
+  }
+    
 
   function open_info_alunos(data_aluno){
-    console.log(data_aluno)
-    setCurrentInfo(data_aluno)
-    setModalInfos(true)
+    setCurrentInfo(data_aluno);
+    setModalInfos(true);
   }
 
   function render_actions(data_aluno){
@@ -303,4 +361,41 @@ useEffect(() => {
     />
   </FloatMessage>
 </Transition>
+*/
+
+/*
+<Modal open={modalInfos} onClose={()=>setModalInfos(false)} closeIcon>
+    <Header content={`Editando informações de ${currentInfo.nome}`} />
+    <Modal.Content>
+      <Form>
+        <Form.Group widths='equal'>
+          <Form.Input 
+            fluid label='Nome'
+            placeholder={currentInfo.nome}
+            onChange={(_, {value}) => setUpdateInfo(prev => ({...prev, nome: value}))}
+          />
+          <Form.Input 
+            fluid
+            label='Email'
+            placeholder={currentInfo.email}
+            onChange={(_, {value}) => setUpdateInfo(prev => ({...prev, email: value}))}
+          />
+          <Form.Input 
+            fluid
+            label='CEP'
+            placeholder={currentInfo.cep}
+            onChange={(_, {value}) => setUpdateInfo(prev => ({...prev, cep: value}))}
+          />
+        </Form.Group>
+      </Form>
+    </Modal.Content>
+    <Modal.Actions>
+      <Button onClick={()=>setModalInfos(false)} color='red'>
+        <Icon name='remove' /> Cancelar
+      </Button>
+      <Button color='green' onClick={() => on_update_aluno_save_press()}>
+        <Icon name='checkmark' /> Salvar
+      </Button>
+    </Modal.Actions>
+  </Modal>
 */
