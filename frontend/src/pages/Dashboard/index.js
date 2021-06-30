@@ -131,6 +131,9 @@ const ModalSelectCursos = ({
       <Modal.Content>
         {loading ? <Loading /> : <CursosList />}
       </Modal.Content>
+      <Modal.Actions>
+        <Button primary onClick={onClose}>Concluido</Button>
+      </Modal.Actions>
     </Modal>
   );
 }
@@ -252,16 +255,15 @@ const Dashboard = () => {
     }
   };
 
-  const on_select_new_curso = async (curso) => {
+  const on_save_new_curso = async (curso) => {
     try{
       await api.post('/atribuirCursoAluno', {
         id_aluno: currentInfo.id,
         id_curso: curso.id,
       });
+      await Promise.all([fetchAvailableCursos(currentInfo), fetchAlunoCursos(currentInfo)]);
     } catch(error) {
       alert(error);
-    } finally {
-      setOpenSelectCursosModal(false);
     }
   };
 
@@ -338,7 +340,8 @@ const Dashboard = () => {
         loading={loadingCursos}
         availableCursos={cursos.available}
         alunoCursos={cursos.aluno}
-        onCursoClick={(curso) => on_select_new_curso(curso)}
+        onAddCurso={on_save_new_curso}
+        onRemoveCurso={console.log}
       />
     );
   };
