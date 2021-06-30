@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useReducer, useState } from 'react';
 
 // components
 import { Table, Button, Popup, Modal, Header, Icon, Form, List, Divider } from 'semantic-ui-react'
@@ -192,14 +192,66 @@ const ModalInfoAlunos = ({title, onClose, open, onSavePress, alunoInfo}) => {
   );
 }
 
+const useModalCursoReducer = () => {
+  const initialState = {
+    open: false,
+    loading: false,
+    title: '',
+    hideAvailableCursos: false,
+  };
+
+  const reducer = (state, action) => {
+    switch (action.type) {
+      case 'OPEN_SELECT_CURSOS_MODAL': {
+        return {
+          ...state,
+          loading: true,
+          open: true,
+          title: `Cursos disponíveis para ${action.payload}`,
+        }
+      }
+      case 'CLOSE_MODAL': {
+        return {
+          ...state,
+          loading: false,
+          open: false,
+          title: '',
+          hideAvailableCursos: false,
+        }
+      }
+      case 'OPEN_ALUNO_CURSOS_MODAL': {
+        return {
+          ...state,
+          loading: true,
+          open: true,
+          title: `Cursos atribuídos a(o) ${action.payload}`,
+          hideAvailableCursos: true,
+        }
+      }
+      case 'FETCH_FINISHED': {
+        return {
+          ...state,
+          loading: false,
+        }
+      }
+      default: {
+        return {
+          ...state
+        }
+      }
+    }
+  }
+
+  return useReducer(reducer, initialState);
+}
+
 const Dashboard = () => {
   const [alunos, setAlunos] = useState([]);
   const [cursos, setCursos] = useState({aluno: [], available: []});
   const [currentInfo, setCurrentInfo] = useState([]);
   const [modalInfos, setModalInfos] = useState(false);
-  const [openSelectCursosModal, setOpenSelectCursosModal] = useState(false);
   const [refresh, setRefresh] = useState(true);
-  const [loadingCursos, setLoadingCursos] = useState(false);
+  const [modalCursoProps, dispatch] = useModalCursoReducer(currentInfo.name);
 
   useEffect(()=>{
     async function fetchData() {
@@ -244,16 +296,31 @@ const Dashboard = () => {
 
   const open_modal_select_cursos = async (data_aluno) => {
     try{
-      setLoadingCursos(true);
       setCurrentInfo(data_aluno);
-      setOpenSelectCursosModal(true);
-      await Promise.all([fetchAvailableCursos(data_aluno), fetchAlunoCursos(data_aluno)]);  
+      dispatch({type: 'OPEN_SELECT_CURSOS_MODAL', payload: data_aluno.nome}); // Test for useModalReducer
+      await Promise.all([fetchAvailableCursos(data_aluno), fetchAlunoCursos(data_aluno)]);
     } catch(error) {
       alert(error);
     } finally {
-      setLoadingCursos(false);
+      dispatch({type: 'FETCH_FINISHED'});
     }
   };
+
+  const close_modal_select_cursos = () => {
+    dispatch({type: 'CLOSE_MODAL'});
+  }
+
+  const open_modal_show_aluno_cursos = async (data_aluno) => {
+    try {
+      setCurrentInfo(data_aluno);
+      dispatch({type: 'OPEN_ALUNO_CURSOS_MODAL', payload: data_aluno.nome});
+      await fetchAlunoCursos(data_aluno);
+    } catch(error) {
+      alert(error);
+    } finally {
+      dispatch({type: 'FETCH_FINISHED'});
+    }
+  }
 
   const on_save_new_curso = async (curso) => {
     try{
@@ -334,10 +401,8 @@ const Dashboard = () => {
   const render_modal_select_cursos = () => {
     return (
       <ModalSelectCursos
-        open={openSelectCursosModal}
-        onClose={() => setOpenSelectCursosModal(false)}
-        title={`Selecione o curso para ${currentInfo.nome}`}
-        loading={loadingCursos}
+        {...modalCursoProps}
+        onClose={close_modal_select_cursos}
         availableCursos={cursos.available}
         alunoCursos={cursos.aluno}
         onAddCurso={on_save_new_curso}
@@ -377,7 +442,13 @@ const Dashboard = () => {
         basic
       />
       <Popup
-        trigger={<Button icon='list' primary/>}
+        trigger={
+          <Button
+            icon='list'
+            primary
+            onClick={() => open_modal_show_aluno_cursos(data_aluno)}
+          />
+        }
         content="Ver cursos do aluno"
         basic
         
