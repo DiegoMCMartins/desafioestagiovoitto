@@ -74,7 +74,7 @@ class AlunoController {
     res.status(404).send('Não foi encontrado nenhum aluno com esse id');
   }
 
-  async getAvailabelCursos(req, res) {
+  async getAvailableCursos(req, res) {
     const {id} = req.body;
     const aluno = await Aluno.findByPk(id);
     if(aluno) {
