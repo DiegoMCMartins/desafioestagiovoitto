@@ -1,4 +1,4 @@
-import React, { useEffect, useReducer, useState } from 'react';
+import React, { useEffect, useReducer, useState, useRef } from 'react';
 
 // components
 import { Table, Button, Popup, Modal, Header, Icon, Form, List, Divider, Message, Transition } from 'semantic-ui-react'
@@ -139,19 +139,87 @@ const ModalSelectCursos = ({
 }
 
 const ModalInfoAlunos = ({title, onClose, open, onSavePress, alunoInfo}) => {
-  const [updateInfo, setUpdateInfo] = useState({});
+  const initalState = {nome: '', email: '', cep: ''};
+  const [updateInfo, setUpdateInfo] = useState(initalState);
+  const [errors, setErrors] = useState(initalState);
+  const [cepLoading, setCepLoading] = useState(false);
+  const [validCep, setValidCep] = useState(false);
+
+  useEffect(() => {
+    if(alunoInfo) {
+      setUpdateInfo(alunoInfo);
+    }
+  }, [alunoInfo]);
 
   const clearUpdateInfo = () => {
-    setUpdateInfo({});
+    setUpdateInfo(initalState);
+    setErrors(initalState);
+    setValidCep(false);
   }
 
   useEffect(() => {
     if(open) {
       return;
     }
-
+    
     clearUpdateInfo();
   }, [open]);
+
+  const cepValidation = async (cep) => {
+    let cepInfo = {};
+    if(is_valid_cep(cep)) {
+      const {cidade, estado, erro} = await fetchCep(`${cep}`);
+      if(erro) {
+        return {error: 'CEP não encontrado'};
+      }
+      
+      cepInfo = {cidade, estado};
+    } else {
+      return {error: 'Formato inválido de CEP'};
+    }
+
+    return cepInfo;
+  }
+
+  const onChange = (field) => (e, {value}) => {
+    if(errors[field]?.length > 0) {
+      setErrors(prev => ({...prev, [field]: ''}));
+    }
+    
+    setUpdateInfo(prev => ({...prev, [field]: value}));
+  }
+
+  const onSubmit = async () => {
+    let invalid = false;
+    let newErrors = {};
+    let cepInfo = {};
+
+    if(errors?.cep.length === 0) {
+      setCepLoading(true);
+      cepInfo = await cepValidation(updateInfo.cep);
+      if(cepInfo?.error) {
+        newErrors = {...newErrors, cep: cepInfo.error};
+        invalid = true;
+        setValidCep(false);
+      } else {
+        setValidCep(true);
+      }
+      setCepLoading(false);
+    }
+    
+    for(const prop in updateInfo) {
+      if(updateInfo[prop].length === 0) {
+        invalid = true;
+        newErrors = {...newErrors, [prop]: 'Campo vazio!'}
+      }
+    }
+
+    if(invalid) {
+      return setErrors(prev => ({...prev, ...newErrors}));
+    }
+
+    onSavePress({...updateInfo, ...cepInfo});
+  }
   
   return (
     <Modal open={open} onClose={onClose} closeIcon>
@@ -159,24 +227,32 @@ const ModalInfoAlunos = ({title, onClose, open, onSavePress, alunoInfo}) => {
       <Modal.Content>
       <Form>
           <Form.Group widths='equal'>
-            <Form.Input 
+            <Form.Input
+              required
               fluid
               label='Nome'
-              placeholder={alunoInfo.nome}
-              onChange={(_, {value}) => setUpdateInfo(prev => ({...prev, nome: value}))}
+              value={updateInfo?.nome || ''}
+              onChange={onChange('nome')}
+              error={errors.nome || undefined }
             />
-            <Form.Input 
+            <Form.Input
+
+              required
               fluid
               label='Email'
-              placeholder={alunoInfo.email}
-              onChange={(_, {value}) => setUpdateInfo(prev => ({...prev, email: value}))}
+              value={updateInfo?.email || ''}
+              onChange={onChange('email')}
+              error={errors.email || undefined }
             />
-            <Form.Input 
+            <Form.Input
+              loading={cepLoading}
+              icon={validCep ? 'check' : undefined}
+              required
               fluid
-              // error={'Ola'}
               label='CEP'
-              placeholder={alunoInfo.cep}
-              onChange={(_, {value}) => setUpdateInfo(prev => ({...prev, cep: value}))}
+              value={updateInfo?.cep || ''}
+              onChange={onChange('cep')}
+              error={errors.cep || undefined }
             />
           </Form.Group>
         </Form>
@@ -185,7 +261,7 @@ const ModalInfoAlunos = ({title, onClose, open, onSavePress, alunoInfo}) => {
         <Button onClick={onClose} color='red'>
           <Icon name='remove' /> Cancelar
         </Button>
-        <Button color='green' onClick={() => onSavePress(updateInfo)}>
+        <Button color='green' onClick={onSubmit}>
           <Icon name='checkmark' /> Salvar
         </Button>
       </Modal.Actions>
@@ -343,7 +419,7 @@ const useModalInfoAlunoReducer = () => {
   const initialState = {
     open: false,
     setting: 'creating',
-    alunoInfo: {},
+    alunoInfo: undefined,
     title: '',
   };
 
@@ -527,63 +603,21 @@ const Dashboard = () => {
   };
 
   const on_update_aluno_save_press = async (updateInfo) => {
-    let cepConfig = {};
     try{
-      const newUpdateInfo = remove_blank_update_info(updateInfo);
-      if(is_empty_update_info(newUpdateInfo)) {
-        dispatchModalInfoAluno({type: 'CLOSE'});
-        return;
-      }
-      if(newUpdateInfo.cep) {
-        const isValidCep = is_valid_cep(newUpdateInfo.cep);
-        if(!isValidCep) {
-          dispatchMessage({
-            type: 'ERROR',
-            header: 'Formato de CEP invalido',
-            content: 'Verifique se o CEP tem 8 dígitos e contenha somente dígitos'
-          });
-          return;
-        }
-        const {cidade, estado, erro} = await fetchCep(`${newUpdateInfo.cep}`);
-        if(erro) {
-          dispatchMessage({
-            type: 'ERROR',
-            header: 'CEP não encontrado',
-            content: 'Digite um CEP válido'
-          });
-          return;
-        }
-
-        cepConfig = {
-          cidade,
-          estado
-        };
-        
-      } 
-
-      const resgiterAlunoConfig = {
-        ...newUpdateInfo,
-        ...cepConfig
-      };
-      
       if(modalInfoAlunoState.setting === 'editing') {
-        const updateAlunoConfig = {
-          id: currentInfo.id,
-          ...resgiterAlunoConfig,
-        }
-        await api.post('/updateAluno', updateAlunoConfig);
+        await api.post('/updateAluno', updateInfo);
       } else {
-        await api.post('/novoAluno', resgiterAlunoConfig);
+        await api.post('/novoAluno', updateInfo);
         dispatchMessage({
           type: 'SUCCESS',
           header: 'Aluno cadastrado com sucesso',
-          content: `O aluno ${resgiterAlunoConfig.nome} foi inserido no sistema`
+          content: `O aluno ${updateInfo.nome} foi inserido no sistema`
         });
       }
       setRefreshAlunos(true);
       dispatchModalInfoAluno({type: 'CLOSE'});
     } catch(error) {
-      console.log(error);
+      alert(error);
     }
     
   };
@@ -692,7 +726,7 @@ const Dashboard = () => {
         </Table>
         <ModalInfoAlunos 
           onClose={close_info_aluno_modal}
-          onSavePress={(updateInfo) => on_update_aluno_save_press(updateInfo)}
+          onSavePress={on_update_aluno_save_press}
           {...modalInfoAlunoState}
         />
         <ModalSelectCursos
