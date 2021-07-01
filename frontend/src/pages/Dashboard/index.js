@@ -192,6 +192,7 @@ const ModalInfoAlunos = ({title, onClose, open, onSavePress, alunoInfo}) => {
   );
 }
 
+// Hooks
 const useModalCursoReducer = () => {
   const initialState = {
     open: false,
@@ -304,14 +305,60 @@ const useMessageReducer = () => {
   return useReducer(reducer, initialState);
 }
 
+const useModalInfoAlunoReducer = () => {
+  const initialState = {
+    open: false,
+    setting: 'creating',
+    alunoInfo: {},
+    title: '',
+  };
+
+  const reducer = (state, action) => {
+    switch (action.type) {
+      case 'CREATE': {
+        return {
+          ...state,
+          open: true,
+          setting: 'creating',
+          title: 'Cadastrando novo aluno'
+        }
+      }
+      case 'EDIT': {
+        return {
+          ...state,
+          open: true,
+          setting: 'editing',
+          alunoInfo: action.payload,
+          title: `Editando informações de ${action.payload.nome}`
+        }
+      }
+      case 'CLOSE': {
+        return {
+          ...initialState,
+          open: false,
+        }
+      }
+      default: {
+        return {
+          ...state
+        }
+      }
+    }
+  }
+
+  return useReducer(reducer, initialState);
+}
+
 const Dashboard = () => {
   const [alunos, setAlunos] = useState([]);
   const [cursos, setCursos] = useState({aluno: [], available: []});
   const [currentInfo, setCurrentInfo] = useState([]);
-  const [modalInfos, setModalInfos] = useState(false);
-  const [refresh, setRefresh] = useState(true);
-  const [modalCursoProps, dispatchModalCurso] = useModalCursoReducer(currentInfo.name);
-  const [messageProps, dispatchMessage]= useMessageReducer();
+  const [refreshAlunos, setRefreshAlunos] = useState(true);
+  const [modalCursoState, dispatchModalCurso] = useModalCursoReducer(currentInfo.name);
+  const [messageState, dispatchMessage]= useMessageReducer();
+  const [modalInfoAlunoState, dispatchModalInfoAluno] = useModalInfoAlunoReducer();
+
+  console.log(modalInfoAlunoState);
 
   useEffect(()=>{
     async function fetchData() {
@@ -323,12 +370,12 @@ const Dashboard = () => {
       }
     }
 
-    if(refresh) {
+    if(refreshAlunos) {
       fetchData();
-      setRefresh(false);
+      setRefreshAlunos(false);
     }
 
-  }, [refresh]);
+  }, [refreshAlunos]);
 
   async function fetchAvailableCursos({id}) {
     try{
@@ -366,11 +413,11 @@ const Dashboard = () => {
     }
   };
 
-  const close_modal_select_cursos = () => {
+  const close_modal_cursos = () => {
     dispatchModalCurso({type: 'CLOSE_MODAL'});
   }
 
-  const open_modal_show_aluno_cursos = async (data_aluno) => {
+  const open_modal_aluno_cursos = async (data_aluno) => {
     try {
       setCurrentInfo(data_aluno);
       dispatchModalCurso({type: 'OPEN_ALUNO_CURSOS_MODAL', payload: data_aluno.nome});
@@ -426,16 +473,13 @@ const Dashboard = () => {
   }
 
   const on_update_aluno_save_press = async (updateInfo) => {
+    let cepConfig = {};
     try{
       const newUpdateInfo = remove_blank_update_info(updateInfo);
       if(Object.keys(newUpdateInfo).length === 0) {
-        setModalInfos(false);
+        dispatchModalInfoAluno({type: 'CLOSE'});
         return;
       }
-      let config = {
-        id: currentInfo.id,
-        ...newUpdateInfo
-      };
       if(newUpdateInfo.cep) {
         const isValidCep = is_valid_cep(newUpdateInfo.cep);
         if(!isValidCep) {
@@ -444,25 +488,42 @@ const Dashboard = () => {
             type: 'ERROR',
             header: 'Formato de CEP invalido',
             content: 'Verifique se o CEP tem 8 dígitos e contenha somente dígitos'
-          })
+          });
           return;
         }
         const response = await cepApi.get(`/${newUpdateInfo.cep}`);
         const {localidade: cidade, uf: estado, erro} = response.data;
+        cepConfig = {
+          cidade,
+          estado
+        };
         if(erro) {
-          alert('CEP não encontrado');
+          // alert('CEP não encontrado');
+          dispatchMessage({
+            type: 'ERROR',
+            header: 'CEP não encontrado',
+            content: 'Digite um CEP válido'
+          });
           return;
         }
-        config = {
-          ...config,
-          cidade,
-          estado,
-        };
       } 
+
+      const createAlunoConfig = {
+        ...newUpdateInfo,
+        ...cepConfig
+      };
       
-      await api.post('/updateAluno', config);
-      setRefresh(true);
-      setModalInfos(false);
+      if(modalInfoAlunoState.setting === 'editing') {
+        const updateAlunoConfig = {
+          id: currentInfo.id,
+          ...createAlunoConfig,
+        }
+        await api.post('/updateAluno', updateAlunoConfig);
+      } else {
+        await api.post('/novoAluno', createAlunoConfig);
+      }
+      setRefreshAlunos(true);
+      dispatchModalInfoAluno({type: 'CLOSE'});
     } catch(error) {
       console.log(error);
     }
@@ -470,16 +531,24 @@ const Dashboard = () => {
   };
     
 
-  function open_info_alunos(data_aluno){
+  function open_edit_info_alunos(data_aluno){
     setCurrentInfo(data_aluno);
-    setModalInfos(true);
+    dispatchModalInfoAluno({type: 'EDIT', payload: data_aluno});
+  }
+
+  function close_edit_info_alunos() {
+    dispatchModalInfoAluno({type: 'CLOSE'});
+  }
+
+  function open_register_aluno() {
+    dispatchModalInfoAluno({type: 'CREATE'});
   }
 
   const render_modal_select_cursos = () => {
     return (
       <ModalSelectCursos
-        {...modalCursoProps}
-        onClose={close_modal_select_cursos}
+        {...modalCursoState}
+        onClose={close_modal_cursos}
         availableCursos={cursos.available}
         alunoCursos={cursos.aluno}
         onAddCurso={on_save_new_curso}
@@ -491,11 +560,12 @@ const Dashboard = () => {
   const render_modal_info_alunos = () => {
     return (
       <ModalInfoAlunos 
-        title={`Editando informações de ${currentInfo.nome}`}
-        onClose={() => setModalInfos(false)}
-        open={modalInfos}
+        // title={`Editando informações de ${currentInfo.nome}`}
+        onClose={close_edit_info_alunos}
+        // open={modalInfos}
         onSavePress={(updateInfo) => on_update_aluno_save_press(updateInfo)}
-        alunoInfo={currentInfo}
+        // alunoInfo={currentInfo}
+        {...modalInfoAlunoState}
       />
     );
   };
@@ -503,7 +573,7 @@ const Dashboard = () => {
   function render_actions(data_aluno){
     return <center>
       <Popup
-        trigger={<Button icon='edit' onClick={()=>open_info_alunos(data_aluno)} />}
+        trigger={<Button icon='edit' onClick={()=>open_edit_info_alunos(data_aluno)} />}
         content="Editar informações"
         basic
       />
@@ -523,7 +593,7 @@ const Dashboard = () => {
           <Button
             icon='list'
             primary
-            onClick={() => open_modal_show_aluno_cursos(data_aluno)}
+            onClick={() => open_modal_aluno_cursos(data_aluno)}
           />
         }
         content="Ver cursos do aluno"
@@ -549,12 +619,12 @@ const Dashboard = () => {
   };
 
   useEffect(() => {
-    if(messageProps.visible) {
+    if(messageState.visible) {
       setTimeout(() => {
         return dispatchMessage({type: 'DISMISS'});
       }, 2000);
     };
-  }, [messageProps, dispatchMessage]);
+  }, [messageState, dispatchMessage]);
 
   const close_message = () => {
     dispatchMessage({type: 'DISMISS'});
@@ -581,19 +651,19 @@ const Dashboard = () => {
         </Table>
         {render_modal_info_alunos()}
         {render_modal_select_cursos()}
-        <Button primary>Adicionar aluno</Button>
+        <Button primary onClick={open_register_aluno}>Adicionar aluno</Button>
         <Button href="/" secondary>Ver instruções</Button>
       </Container>
       <Transition.Group
         animation={'fade down'}
         duration={400}
       >
-        {messageProps.visible && (
+        {messageState.visible && (
           <FloatMessage>
             <Message
-              icon={<Icon name={messageProps.icon} />}
+              icon={<Icon name={messageState.icon} />}
               onDismiss={close_message}
-              {...messageProps}
+              {...messageState}
             />
           </FloatMessage>
           
