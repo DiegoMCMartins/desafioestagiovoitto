@@ -1,7 +1,19 @@
-import React, { useEffect, useReducer, useState, useRef } from 'react';
+import React, { useEffect, useReducer, useState } from 'react';
 
 // components
-import { Table, Button, Popup, Modal, Header, Icon, Form, List, Divider, Message, Transition } from 'semantic-ui-react'
+import {
+  Table,
+  Button,
+  Popup,
+  Modal,
+  Header,
+  Icon,
+  Form,
+  List,
+  Divider,
+  Message,
+  Transition
+} from 'semantic-ui-react'
 
 //services
 import api from '../../services/api';
@@ -327,7 +339,7 @@ const ModalInfoAlunos = ({title, onClose, open, onSavePress, alunoInfo}) => {
     }
   }, [alunoInfo]);
 
-  const clearUpdateInfo = () => {
+  const clear = () => {
     setUpdateInfo(initalState);
     setErrors(initalState);
     setValidCep(false);
@@ -338,23 +350,27 @@ const ModalInfoAlunos = ({title, onClose, open, onSavePress, alunoInfo}) => {
       return;
     }
     
-    clearUpdateInfo();
+    clear();
   }, [open]);
 
   const cepValidation = async (cep) => {
-    let cepInfo = {};
-    if(is_valid_cep(cep)) {
-      const {cidade, estado, erro} = await fetchCep(`${cep}`);
-      if(erro) {
-        return {error: 'CEP não encontrado'};
+    try {
+      let cepInfo = {};
+      if(is_valid_cep(cep)) {
+        const {cidade, estado, erro} = await fetchCep(`${cep}`);
+        if(erro) {
+          return {error: 'CEP não encontrado'};
+        }
+        
+        cepInfo = {cidade, estado};
+      } else {
+        return {error: 'Formato inválido de CEP'};
       }
-      
-      cepInfo = {cidade, estado};
-    } else {
-      return {error: 'Formato inválido de CEP'};
+  
+      return cepInfo;
+    }catch(error) {
+      alert('Ocorreu um erro ao validar o cep, contate o suporte caso se repita.');
     }
-
-    return cepInfo;
   }
 
   const onChange = (field) => (e, {value}) => {
@@ -412,7 +428,6 @@ const ModalInfoAlunos = ({title, onClose, open, onSavePress, alunoInfo}) => {
               error={errors.nome || undefined }
             />
             <Form.Input
-
               required
               fluid
               label='Email'
@@ -518,8 +533,7 @@ const Dashboard = () => {
       const response = await api.post(`${endpoint}`, { id });
       return response.data;
     }catch(error) {
-      // TODO: Show error better
-      alert(error);
+      alert('Ocorreu um erro ao buscar os cursos, contate o suporte caso se repita.');
     }
   }
 
@@ -576,7 +590,7 @@ const Dashboard = () => {
       });
       await fetchAllCursos(currentInfo);
     }catch(error) {
-      alert(error);
+      alert('Ocorreu um erro ao atribuir o curso, contate o suporte caso se repita');
     }
   }
 
@@ -603,7 +617,7 @@ const Dashboard = () => {
       setRefreshAlunos(true);
       dispatchModalInfoAluno({type: 'CLOSE'});
     } catch(error) {
-      alert(error);
+      alert('Ocorreu um erro ao criar/atualizar os dados do aluno, contate o suporte caso se repita.');
     }
     
   };
@@ -628,16 +642,20 @@ const Dashboard = () => {
   }
 
   async function on_confirm_delete_aluno() {
-    await api.post('/excluirAluno', {
-      id: currentInfo.id,
-    });
-    setRefreshAlunos(true);
-    setOpenDeleteConfirmation(false);
-    dispatchMessage({
-      type: 'SUCCESS',
-      header: 'Aluno excluído com sucesso',
-      content: 'O aluno foi excluido de forma permanente.'
-    });
+    try {
+      await api.post('/excluirAluno', {
+        id: currentInfo.id,
+      });
+      setRefreshAlunos(true);
+      setOpenDeleteConfirmation(false);
+      dispatchMessage({
+        type: 'SUCCESS',
+        header: 'Aluno excluído com sucesso',
+        content: 'O aluno foi excluido de forma permanente.'
+      });
+    }catch(error) {
+      alert('Ocorreu um erro ao excluir o aluno, contate o suporte caso se repita.')
+    }
   }
 
   function close_delete_aluno_confirmation_modal() {
@@ -753,107 +771,3 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
-
-
-// Test
-
-// const render_delete_confirmation_modal = () => {
-  //   return (
-  //     <ModalDeleteConfirmation
-  //       open={openDeleteConfirmation}
-  //       title={`Deseja realmente excluir ${currentInfo.nome} ?`}
-  //       content={'O aluno será excluido de modo permanente.'}
-  //       onClose={close_delete_aluno_confirmation_modal}
-  //       onConfirmPress={on_confirm_delete_aluno}
-  //     />
-  //   );
-  // }
-
-  // const render_modal_select_cursos = () => {
-  //   return (
-  //     <ModalSelectCursos
-  //       {...modalCursoState}
-  //       onClose={close_modal_cursos}
-  //       availableCursos={cursos.available}
-  //       alunoCursos={cursos.aluno}
-  //       onAddCurso={on_assign_new_curso}
-  //       onRemoveCurso={on_remove_assigned_curso}
-  //     />
-  //   );
-  // };
-
-  // const render_modal_info_alunos = () => {
-  //   return (
-  //     <ModalInfoAlunos 
-  //       // title={`Editando informações de ${currentInfo.nome}`}
-  //       onClose={close_info_aluno_modal}
-  //       // open={modalInfos}
-  //       onSavePress={(updateInfo) => on_update_aluno_save_press(updateInfo)}
-  //       // alunoInfo={currentInfo}
-  //       {...modalInfoAlunoState}
-  //     />
-  //   );
-  // };
-
-/*
-useEffect(() => {
-    if(successMessageVisible) {
-      setTimeout(() => {
-        setSuccessMessageVisible(false);
-      }, 2000);
-    };
-  }, [successMessageVisible]);
-
-  const toggle_success_message_visible = () => {
-    setSuccessMessageVisible(prev => !prev);
-  };
-
-<Transition visible={successMessageVisible} animation={'fly down'} unmountOnHide duration={500}>
-  <FloatMessage>
-    <Message
-      header={'Curso adicionado com sucesso'}
-      content={`O curso foi vinculado ao seu perfil`}
-      icon={<Icon name={'check'} />}
-      onDismiss={toggle_success_message_visible}
-      positive
-    />
-  </FloatMessage>
-</Transition>
-*/
-
-/*
-<Modal open={modalInfos} onClose={()=>setModalInfos(false)} closeIcon>
-    <Header content={`Editando informações de ${currentInfo.nome}`} />
-    <Modal.Content>
-      <Form>
-        <Form.Group widths='equal'>
-          <Form.Input 
-            fluid label='Nome'
-            placeholder={currentInfo.nome}
-            onChange={(_, {value}) => setUpdateInfo(prev => ({...prev, nome: value}))}
-          />
-          <Form.Input 
-            fluid
-            label='Email'
-            placeholder={currentInfo.email}
-            onChange={(_, {value}) => setUpdateInfo(prev => ({...prev, email: value}))}
-          />
-          <Form.Input 
-            fluid
-            label='CEP'
-            placeholder={currentInfo.cep}
-            onChange={(_, {value}) => setUpdateInfo(prev => ({...prev, cep: value}))}
-          />
-        </Form.Group>
-      </Form>
-    </Modal.Content>
-    <Modal.Actions>
-      <Button onClick={()=>setModalInfos(false)} color='red'>
-        <Icon name='remove' /> Cancelar
-      </Button>
-      <Button color='green' onClick={() => on_update_aluno_save_press()}>
-        <Icon name='checkmark' /> Salvar
-      </Button>
-    </Modal.Actions>
-  </Modal>
-*/
