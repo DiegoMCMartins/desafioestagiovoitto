@@ -1,4 +1,4 @@
-import React, { useEffect, useReducer, useState } from 'react';
+import React, { useEffect, useReducer, useState, useRef } from 'react';
 
 // components
 import {
@@ -12,7 +12,7 @@ import {
   List,
   Divider,
   Message,
-  Transition
+  Transition,
 } from 'semantic-ui-react'
 
 //services
@@ -253,6 +253,7 @@ const ModalSelectCursos = ({
             buttonIcon={'add'}
             buttonColor={'green'}
             onClick={() => onAddCurso(curso)}
+            key={curso.nome}
           />
         ))
       );
@@ -281,6 +282,7 @@ const ModalSelectCursos = ({
             buttonIcon={'remove'}
             buttonColor={'red'}
             onClick={() => onRemoveCurso(curso)}
+            key={curso.nome}
           />
         ))
       )
@@ -327,9 +329,9 @@ const ModalSelectCursos = ({
 }
 
 const ModalInfoAlunos = ({title, onClose, open, onSavePress, alunoInfo}) => {
-  const initalState = {nome: '', email: '', cep: ''};
-  const [updateInfo, setUpdateInfo] = useState(initalState);
-  const [errors, setErrors] = useState(initalState);
+  const initialState = useRef({nome: '', email: '', cep: ''}).current;
+  const [updateInfo, setUpdateInfo] = useState(initialState);
+  const [errors, setErrors] = useState(initialState);
   const [cepLoading, setCepLoading] = useState(false);
   const [validCep, setValidCep] = useState(false);
 
@@ -339,19 +341,19 @@ const ModalInfoAlunos = ({title, onClose, open, onSavePress, alunoInfo}) => {
     }
   }, [alunoInfo]);
 
-  const clear = () => {
-    setUpdateInfo(initalState);
-    setErrors(initalState);
-    setValidCep(false);
-  }
-
   useEffect(() => {
     if(open) {
       return;
     }
+
+    const clear = () => {
+      setUpdateInfo(initialState);
+      setErrors(initialState);
+      setValidCep(false);
+    }
     
     clear();
-  }, [open]);
+  }, [open, initialState]);
 
   const cepValidation = async (cep) => {
     try {
