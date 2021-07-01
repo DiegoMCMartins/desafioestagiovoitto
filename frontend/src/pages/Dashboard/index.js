@@ -10,6 +10,182 @@ import cepApi from '../../services/cepApi';
 // styles
 import { Container, InitialText, Float } from './styles';
 
+
+// hooks
+const useModalCursoReducer = () => {
+  const initialState = {
+    open: false,
+    loading: false,
+    title: '',
+    hideAvailableCursos: false,
+  };
+
+  const reducer = (state, action) => {
+    switch (action.type) {
+      case 'OPEN_SELECT_CURSOS_MODAL': {
+        return {
+          ...state,
+          loading: true,
+          open: true,
+          title: `Cursos disponíveis para ${action.payload}`,
+        }
+      }
+      case 'CLOSE_MODAL': {
+        return {
+          ...state,
+          loading: false,
+          open: false,
+          title: '',
+          hideAvailableCursos: false,
+        }
+      }
+      case 'OPEN_ALUNO_CURSOS_MODAL': {
+        return {
+          ...state,
+          loading: true,
+          open: true,
+          title: `Cursos atribuídos a(o) ${action.payload}`,
+          hideAvailableCursos: true,
+        }
+      }
+      case 'FETCH_FINISHED': {
+        return {
+          ...state,
+          loading: false,
+        }
+      }
+      default: {
+        return {
+          ...state
+        }
+      }
+    }
+  }
+
+  return useReducer(reducer, initialState);
+}
+
+const useMessageReducer = () => {
+  const initialState = {
+    header: '',
+    content: '',
+    icon: '',
+    positive: false,
+    negative: false,
+    warning: false,
+    visible: false,
+  }
+
+  const reducer = (state, action) => {
+    switch(action.type) {
+      case 'SUCCESS': {
+        return {
+          ...state,
+          header: action.header,
+          content: action.content,
+          visible: true,
+          positive: true,
+          icon: 'check'
+        }
+      }
+      case 'WARNING': {
+        return {
+          ...state,
+          header: action.header,
+          content: action.content,
+          visible: true,
+          warning: true,
+          icon: 'warning'
+        }
+      }
+      case 'ERROR': {
+        return {
+          ...state,
+          header: action.header,
+          content: action.content,
+          visible: true,
+          negative: true,
+          icon: 'frown outline'
+        }
+      }
+      case 'DISMISS': {
+        return {
+          ...initialState,
+        }
+      }
+      default: {
+        return {
+          ...state,
+        }
+      }
+    }
+  }
+
+  return useReducer(reducer, initialState);
+}
+
+const useModalInfoAlunoReducer = () => {
+  const initialState = {
+    open: false,
+    setting: 'creating',
+    alunoInfo: undefined,
+    title: '',
+  };
+
+  const reducer = (state, action) => {
+    switch (action.type) {
+      case 'CREATE': {
+        return {
+          ...state,
+          open: true,
+          setting: 'creating',
+          title: 'Cadastrando novo aluno'
+        }
+      }
+      case 'EDIT': {
+        return {
+          ...state,
+          open: true,
+          setting: 'editing',
+          alunoInfo: action.payload,
+          title: `Editando informações de ${action.payload.nome}`
+        }
+      }
+      case 'CLOSE': {
+        return {
+          ...initialState,
+          open: false,
+        }
+      }
+      default: {
+        return {
+          ...state
+        }
+      }
+    }
+  }
+
+  return useReducer(reducer, initialState);
+}
+
+// functions
+const is_valid_cep = (cep) => {
+  const cepRegex = /^\d{8}$/;
+
+  return cepRegex.test(cep);
+}
+
+async function fetchCep(cep) {
+  const response = await cepApi.get(cep);
+  const {
+    localidade: cidade,
+    uf: estado,
+    erro
+  } = response.data;
+
+  return {cidade, estado, erro};
+};
+
 // dashboard components
 const ModalSelectCursos = ({
   open,
@@ -301,196 +477,6 @@ function Action({icon, onClick, popupContent, ...buttonProps}) {
     />
   );
 }
-
-// hooks
-const useModalCursoReducer = () => {
-  const initialState = {
-    open: false,
-    loading: false,
-    title: '',
-    hideAvailableCursos: false,
-  };
-
-  const reducer = (state, action) => {
-    switch (action.type) {
-      case 'OPEN_SELECT_CURSOS_MODAL': {
-        return {
-          ...state,
-          loading: true,
-          open: true,
-          title: `Cursos disponíveis para ${action.payload}`,
-        }
-      }
-      case 'CLOSE_MODAL': {
-        return {
-          ...state,
-          loading: false,
-          open: false,
-          title: '',
-          hideAvailableCursos: false,
-        }
-      }
-      case 'OPEN_ALUNO_CURSOS_MODAL': {
-        return {
-          ...state,
-          loading: true,
-          open: true,
-          title: `Cursos atribuídos a(o) ${action.payload}`,
-          hideAvailableCursos: true,
-        }
-      }
-      case 'FETCH_FINISHED': {
-        return {
-          ...state,
-          loading: false,
-        }
-      }
-      default: {
-        return {
-          ...state
-        }
-      }
-    }
-  }
-
-  return useReducer(reducer, initialState);
-}
-
-const useMessageReducer = () => {
-  const initialState = {
-    header: '',
-    content: '',
-    icon: '',
-    positive: false,
-    negative: false,
-    warning: false,
-    visible: false,
-  }
-
-  const reducer = (state, action) => {
-    switch(action.type) {
-      case 'SUCCESS': {
-        return {
-          ...state,
-          header: action.header,
-          content: action.content,
-          visible: true,
-          positive: true,
-          icon: 'check'
-        }
-      }
-      case 'WARNING': {
-        return {
-          ...state,
-          header: action.header,
-          content: action.content,
-          visible: true,
-          warning: true,
-          icon: 'warning'
-        }
-      }
-      case 'ERROR': {
-        return {
-          ...state,
-          header: action.header,
-          content: action.content,
-          visible: true,
-          negative: true,
-          icon: 'frown outline'
-        }
-      }
-      case 'DISMISS': {
-        return {
-          ...initialState,
-        }
-      }
-      default: {
-        return {
-          ...state,
-        }
-      }
-    }
-  }
-
-  return useReducer(reducer, initialState);
-}
-
-const useModalInfoAlunoReducer = () => {
-  const initialState = {
-    open: false,
-    setting: 'creating',
-    alunoInfo: undefined,
-    title: '',
-  };
-
-  const reducer = (state, action) => {
-    switch (action.type) {
-      case 'CREATE': {
-        return {
-          ...state,
-          open: true,
-          setting: 'creating',
-          title: 'Cadastrando novo aluno'
-        }
-      }
-      case 'EDIT': {
-        return {
-          ...state,
-          open: true,
-          setting: 'editing',
-          alunoInfo: action.payload,
-          title: `Editando informações de ${action.payload.nome}`
-        }
-      }
-      case 'CLOSE': {
-        return {
-          ...initialState,
-          open: false,
-        }
-      }
-      default: {
-        return {
-          ...state
-        }
-      }
-    }
-  }
-
-  return useReducer(reducer, initialState);
-}
-
-// functions
-const remove_blank_update_info = (updateInfo) => {
-  let newUpdateInfo = {};
-  const properties = Object.keys(updateInfo);
-
-  for(const property of properties) {
-    if(updateInfo[property].length > 0) {
-      newUpdateInfo = {...newUpdateInfo, [property]: updateInfo[property]}
-    }
-  };
-
-  return newUpdateInfo;
-}
-
-const is_valid_cep = (cep) => {
-  const cepRegex = /^\d{8}$/;
-
-  return cepRegex.test(cep);
-}
-
-async function fetchCep(cep) {
-  const response = await cepApi.get(cep);
-  const {
-    localidade: cidade,
-    uf: estado,
-    erro
-  } = response.data;
-
-  return {cidade, estado, erro};
-};
-
-const is_empty_update_info = (updateInfo) => (Object.keys(updateInfo).length === 0);
 
 const Dashboard = () => {
   const [alunos, setAlunos] = useState([]);
