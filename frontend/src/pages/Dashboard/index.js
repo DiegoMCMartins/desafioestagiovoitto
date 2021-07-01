@@ -504,7 +504,7 @@ const Dashboard = () => {
   const [modalCursoState, dispatchModalCurso] = useModalCursoReducer(currentInfo.name);
   const [messageState, dispatchMessage]= useMessageReducer();
   const [modalInfoAlunoState, dispatchModalInfoAluno] = useModalInfoAlunoReducer();
-
+  
   useEffect(()=>{
     async function fetchData() {
       try{

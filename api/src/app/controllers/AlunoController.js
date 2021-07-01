@@ -26,18 +26,18 @@ class AlunoController {
       return res.status(200).send('Usuario criado com sucesso');
     }
 
-    res.status(400).send('Algo deu errado');
+    res.status(400).send('Dados incorretos ou faltando, corrija por favor.');
   }
 
   async update(req, res) {
     const {id, ...updateInfo} = req.body;
-    const aluno = await Aluno.update(updateInfo, {
+    await Aluno.update(updateInfo, {
       where: {
         id,
       }
     });
 
-    res.status(200).send('OK');
+    res.status(200).send('Dados atualizados');
   }
 
   async delete(req, res) {
@@ -48,24 +48,24 @@ class AlunoController {
       },
     });
     if(rowDeleted > 0) {
-      return res.send("Excluido");
+      return res.send("Aluno excluido do sistema");
     }
     
-    res.status(400).send('Id incorreto');
+    res.status(400).send('Id do aluno incorreto');
   }
 
   async addCurso(req, res) {
     const {id_aluno, id_curso} = req.body;
     await atribuirCursoAluno.execute({id_aluno, id_curso});
 
-    res.status(200).send('OK');
+    res.status(200).send('Curso atribuido com sucesso');
   }
 
   async removeCurso(req, res) {
     const {id_aluno, id_curso} = req.body;
     await atribuirCursoAluno.remove({id_aluno, id_curso});
 
-    res.status(200).send('OK');
+    res.status(200).send('Curso removido do aluno');
   }
 
   async getCursos(req, res) {
