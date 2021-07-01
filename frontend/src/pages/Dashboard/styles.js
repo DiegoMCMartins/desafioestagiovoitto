@@ -14,7 +14,7 @@ export const Container = styled.div`
   padding:20px;
 `;
 
-export const FloatMessage = styled.div`
+export const Float = styled.div`
   position: fixed;
   top: 20px;
   right: 50px;

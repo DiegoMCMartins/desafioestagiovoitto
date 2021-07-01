@@ -8,9 +8,9 @@ import api from '../../services/api';
 import cepApi from '../../services/cepApi';
 
 // styles
-import { Container, InitialText, FloatMessage } from './styles';
+import { Container, InitialText, Float } from './styles';
 
-// Components
+// dashboard components
 const ModalSelectCursos = ({
   open,
   onClose,
@@ -173,6 +173,7 @@ const ModalInfoAlunos = ({title, onClose, open, onSavePress, alunoInfo}) => {
             />
             <Form.Input 
               fluid
+              // error={'Ola'}
               label='CEP'
               placeholder={alunoInfo.cep}
               onChange={(_, {value}) => setUpdateInfo(prev => ({...prev, cep: value}))}
@@ -192,7 +193,40 @@ const ModalInfoAlunos = ({title, onClose, open, onSavePress, alunoInfo}) => {
   );
 }
 
-// Hooks
+const ModalDeleteConfirmation = ({title, content, open, onConfirmPress, onClose}) => {
+  return (
+    <Modal open={open} onClose={onClose}>
+      <Modal.Header>
+        <Header as={'h3'}>{title}</Header>
+      </Modal.Header>
+      <Modal.Content>{content}</Modal.Content>
+      <Modal.Actions>
+        <Button content={'Cancelar'} basic primary onClick={onClose} />
+        <Button negative onClick={onConfirmPress}>
+          <Icon name={'trash'}/> Excluir
+        </Button>
+      </Modal.Actions>
+    </Modal>
+  );
+}
+
+function Action({icon, onClick, popupContent, ...buttonProps}) {
+  return (
+    <Popup
+      trigger={
+        <Button
+          icon={icon}
+          onClick={onClick}
+          {...buttonProps}
+        />
+      }
+      content={popupContent}
+      basic
+    />
+  );
+}
+
+// hooks
 const useModalCursoReducer = () => {
   const initialState = {
     open: false,
@@ -349,16 +383,48 @@ const useModalInfoAlunoReducer = () => {
   return useReducer(reducer, initialState);
 }
 
+// functions
+const remove_blank_update_info = (updateInfo) => {
+  let newUpdateInfo = {};
+  const properties = Object.keys(updateInfo);
+
+  for(const property of properties) {
+    if(updateInfo[property].length > 0) {
+      newUpdateInfo = {...newUpdateInfo, [property]: updateInfo[property]}
+    }
+  };
+
+  return newUpdateInfo;
+}
+
+const is_valid_cep = (cep) => {
+  const cepRegex = /^\d{8}$/;
+
+  return cepRegex.test(cep);
+}
+
+async function fetchCep(cep) {
+  const response = await cepApi.get(cep);
+  const {
+    localidade: cidade,
+    uf: estado,
+    erro
+  } = response.data;
+
+  return {cidade, estado, erro};
+};
+
+const is_empty_update_info = (updateInfo) => (Object.keys(updateInfo).length === 0);
+
 const Dashboard = () => {
   const [alunos, setAlunos] = useState([]);
   const [cursos, setCursos] = useState({aluno: [], available: []});
   const [currentInfo, setCurrentInfo] = useState([]);
   const [refreshAlunos, setRefreshAlunos] = useState(true);
+  const [openDeleteConfirmation, setOpenDeleteConfirmation] = useState(false);
   const [modalCursoState, dispatchModalCurso] = useModalCursoReducer(currentInfo.name);
   const [messageState, dispatchMessage]= useMessageReducer();
   const [modalInfoAlunoState, dispatchModalInfoAluno] = useModalInfoAlunoReducer();
-
-  console.log(modalInfoAlunoState);
 
   useEffect(()=>{
     async function fetchData() {
@@ -377,35 +443,46 @@ const Dashboard = () => {
 
   }, [refreshAlunos]);
 
-  async function fetchAvailableCursos({id}) {
-    try{
-      const response = await api.post('/getAvailableCursos', {
-        id,
-      });
-      setCursos(prev => ({...prev, available: response.data}));
-    } catch(error) {
-      console.log(error);
+  useEffect(() => {
+    if(messageState.visible) {
+      setTimeout(() => {
+        return dispatchMessage({type: 'DISMISS'});
+      }, 2000);
+    };
+  }, [messageState, dispatchMessage]);
+
+  async function fetchCursos({id, endpoint}) {
+    try {
+      const response = await api.post(`${endpoint}`, { id });
+      return response.data;
+    }catch(error) {
+      // TODO: Show error better
       alert(error);
     }
+  }
+
+  async function fetchAvailableCursos({id}) {
+    const response = await fetchCursos({id, endpoint: '/getAvailableCursos'});
+    setCursos(prev => ({...prev, available: response}));
   };
 
   async function fetchAlunoCursos({id}) {
-    try{
-      const response = await api.post('/getCursos', {
-        id,
-      });
-      setCursos(prev => ({...prev, aluno: response.data}));
-    } catch(error) {
-      console.log(error);
-      alert(error);
-    }
+    const response = await fetchCursos({ id, endpoint: '/getCursos'});
+    setCursos(prev => ({...prev, aluno: response}));
   };
 
-  const open_modal_select_cursos = async (data_aluno) => {
+  async function fetchAllCursos(data_aluno) {
+    return Promise.all([
+      fetchAvailableCursos(data_aluno),
+      fetchAlunoCursos(data_aluno)
+    ]);
+  }
+
+  async function open_modal_select_cursos(data_aluno) {
     try{
       setCurrentInfo(data_aluno);
-      dispatchModalCurso({type: 'OPEN_SELECT_CURSOS_MODAL', payload: data_aluno.nome}); // Test for useModalReducer
-      await Promise.all([fetchAvailableCursos(data_aluno), fetchAlunoCursos(data_aluno)]);
+      dispatchModalCurso({type: 'OPEN_SELECT_CURSOS_MODAL', payload: data_aluno.nome});
+      await fetchAllCursos(data_aluno);
     } catch(error) {
       alert(error);
     } finally {
@@ -413,11 +490,7 @@ const Dashboard = () => {
     }
   };
 
-  const close_modal_cursos = () => {
-    dispatchModalCurso({type: 'CLOSE_MODAL'});
-  }
-
-  const open_modal_aluno_cursos = async (data_aluno) => {
+  async function open_modal_aluno_cursos(data_aluno) {
     try {
       setCurrentInfo(data_aluno);
       dispatchModalCurso({type: 'OPEN_ALUNO_CURSOS_MODAL', payload: data_aluno.nome});
@@ -429,61 +502,41 @@ const Dashboard = () => {
     }
   }
 
-  const on_save_new_curso = async (curso) => {
-    try{
-      await api.post('/atribuirCursoAluno', {
-        id_aluno: currentInfo.id,
-        id_curso: curso.id,
-      });
-      await Promise.all([fetchAvailableCursos(currentInfo), fetchAlunoCursos(currentInfo)]);
-    } catch(error) {
-      alert(error);
-    }
-  };
-
-  const on_remove_curso = async (curso) => {
-    try{
-      await api.post('/removeCursoAluno', {
-        id_aluno: currentInfo.id,
-        id_curso: curso.id,
-      });
-      await Promise.all([fetchAvailableCursos(currentInfo), fetchAlunoCursos(currentInfo)]);
-    } catch(error) {
-      alert(error);
-    }
-  };
-
-  const remove_blank_update_info = (updateInfo) => {
-    let newUpdateInfo = {};
-    const properties = Object.keys(updateInfo);
-
-    for(const property of properties) {
-      if(updateInfo[property].length > 0) {
-        newUpdateInfo = {...newUpdateInfo, [property]: updateInfo[property]}
-      }
-    };
-
-    return newUpdateInfo;
+  const close_modal_cursos = () => {
+    dispatchModalCurso({type: 'CLOSE_MODAL'});
   }
 
-  const is_valid_cep = (cep) => {
-    const cepRegex = /^\d{8}$/;
-
-    return cepRegex.test(cep);
+  async function change_curso_assign({curso, endpoint}) {
+    try {
+      await api.post(`${endpoint}`, {
+        id_aluno: currentInfo.id,
+        id_curso: curso.id
+      });
+      await fetchAllCursos(currentInfo);
+    }catch(error) {
+      alert(error);
+    }
   }
+
+  async function on_assign_new_curso(curso) {
+    await change_curso_assign({curso, endpoint: '/atribuirCursoAluno'});
+  };
+
+  const on_remove_assigned_curso = async (curso) => {
+    await change_curso_assign({curso, endpoint: '/removeCursoAluno'});
+  };
 
   const on_update_aluno_save_press = async (updateInfo) => {
     let cepConfig = {};
     try{
       const newUpdateInfo = remove_blank_update_info(updateInfo);
-      if(Object.keys(newUpdateInfo).length === 0) {
+      if(is_empty_update_info(newUpdateInfo)) {
         dispatchModalInfoAluno({type: 'CLOSE'});
         return;
       }
       if(newUpdateInfo.cep) {
         const isValidCep = is_valid_cep(newUpdateInfo.cep);
         if(!isValidCep) {
-          // alert('Formato invalido de CEP');
           dispatchMessage({
             type: 'ERROR',
             header: 'Formato de CEP invalido',
@@ -491,14 +544,8 @@ const Dashboard = () => {
           });
           return;
         }
-        const response = await cepApi.get(`/${newUpdateInfo.cep}`);
-        const {localidade: cidade, uf: estado, erro} = response.data;
-        cepConfig = {
-          cidade,
-          estado
-        };
+        const {cidade, estado, erro} = await fetchCep(`${newUpdateInfo.cep}`);
         if(erro) {
-          // alert('CEP não encontrado');
           dispatchMessage({
             type: 'ERROR',
             header: 'CEP não encontrado',
@@ -506,9 +553,15 @@ const Dashboard = () => {
           });
           return;
         }
+
+        cepConfig = {
+          cidade,
+          estado
+        };
+        
       } 
 
-      const createAlunoConfig = {
+      const resgiterAlunoConfig = {
         ...newUpdateInfo,
         ...cepConfig
       };
@@ -516,11 +569,16 @@ const Dashboard = () => {
       if(modalInfoAlunoState.setting === 'editing') {
         const updateAlunoConfig = {
           id: currentInfo.id,
-          ...createAlunoConfig,
+          ...resgiterAlunoConfig,
         }
         await api.post('/updateAluno', updateAlunoConfig);
       } else {
-        await api.post('/novoAluno', createAlunoConfig);
+        await api.post('/novoAluno', resgiterAlunoConfig);
+        dispatchMessage({
+          type: 'SUCCESS',
+          header: 'Aluno cadastrado com sucesso',
+          content: `O aluno ${resgiterAlunoConfig.nome} foi inserido no sistema`
+        });
       }
       setRefreshAlunos(true);
       dispatchModalInfoAluno({type: 'CLOSE'});
@@ -531,105 +589,88 @@ const Dashboard = () => {
   };
     
 
-  function open_edit_info_alunos(data_aluno){
+  function open_edit_info_aluno_modal(data_aluno){
     setCurrentInfo(data_aluno);
     dispatchModalInfoAluno({type: 'EDIT', payload: data_aluno});
   }
 
-  function close_edit_info_alunos() {
+  function close_info_aluno_modal() {
     dispatchModalInfoAluno({type: 'CLOSE'});
   }
 
-  function open_register_aluno() {
+  function open_register_aluno_modal() {
     dispatchModalInfoAluno({type: 'CREATE'});
   }
 
-  const render_modal_select_cursos = () => {
+  function open_delete_aluno_confirmation_modal(data_aluno) {
+    setCurrentInfo(data_aluno);
+    setOpenDeleteConfirmation(true);
+  }
+
+  async function on_confirm_delete_aluno() {
+    await api.post('/excluirAluno', {
+      id: currentInfo.id,
+    });
+    setRefreshAlunos(true);
+    setOpenDeleteConfirmation(false);
+    dispatchMessage({
+      type: 'SUCCESS',
+      header: 'Aluno excluído com sucesso',
+      content: 'O aluno foi excluido de forma permanente.'
+    });
+  }
+
+  function close_delete_aluno_confirmation_modal() {
+    setOpenDeleteConfirmation(false);
+  }
+
+  function Actions({data_aluno}) {
     return (
-      <ModalSelectCursos
-        {...modalCursoState}
-        onClose={close_modal_cursos}
-        availableCursos={cursos.available}
-        alunoCursos={cursos.aluno}
-        onAddCurso={on_save_new_curso}
-        onRemoveCurso={on_remove_curso}
-      />
-    );
+      <center>
+        <Action
+          icon={'edit'}
+          onClick={() => open_edit_info_aluno_modal(data_aluno)}
+          popupContent={'Editar informações'}
+        />
+        <Action
+          icon={'plus'}
+          onClick={() => open_modal_select_cursos(data_aluno)}
+          popupContent={'Adicionar curso para aluno'}
+          positive
+        />
+        <Action 
+          icon={'list'}
+          onClick={() => open_modal_aluno_cursos(data_aluno)}
+          popupContent={'Ver cursos do aluno'}
+          primary
+        />
+        <Action
+          icon={'close'}
+          onClick={() => open_delete_aluno_confirmation_modal(data_aluno)}
+          popupContent={'Excluir aluno'}
+          negative
+        />
+      </center>
+    )
   };
 
-  const render_modal_info_alunos = () => {
-    return (
-      <ModalInfoAlunos 
-        // title={`Editando informações de ${currentInfo.nome}`}
-        onClose={close_edit_info_alunos}
-        // open={modalInfos}
-        onSavePress={(updateInfo) => on_update_aluno_save_press(updateInfo)}
-        // alunoInfo={currentInfo}
-        {...modalInfoAlunoState}
-      />
-    );
+  function Alunos(){
+    return alunos.map((aluno) => (
+      <Table.Row key={aluno.id}>
+        <Table.Cell>{aluno.id}</Table.Cell>
+        <Table.Cell>{aluno.nome}</Table.Cell>
+        <Table.Cell>{aluno.email}</Table.Cell>
+        <Table.Cell>{aluno.cep}</Table.Cell>
+        <Table.Cell>
+          <Actions data_aluno={aluno} />
+        </Table.Cell>
+      </Table.Row>
+    ))
   };
-
-  function render_actions(data_aluno){
-    return <center>
-      <Popup
-        trigger={<Button icon='edit' onClick={()=>open_edit_info_alunos(data_aluno)} />}
-        content="Editar informações"
-        basic
-      />
-      <Popup
-        trigger={
-          <Button
-            icon='plus'
-            positive 
-            onClick={() => open_modal_select_cursos(data_aluno)} 
-          />
-        }
-        content="Adicionar curso para aluno"
-        basic
-      />
-      <Popup
-        trigger={
-          <Button
-            icon='list'
-            primary
-            onClick={() => open_modal_aluno_cursos(data_aluno)}
-          />
-        }
-        content="Ver cursos do aluno"
-        basic
-        
-      />
-      <Popup
-        trigger={<Button icon='close' negative />}
-        content="Excluir aluno"
-        basic
-      />
-    </center>
-  };
-
-  function render_alunos(){
-    return alunos.map((v)=><Table.Row>
-      <Table.Cell>{v.id}</Table.Cell>
-      <Table.Cell>{v.nome}</Table.Cell>
-      <Table.Cell>{v.email}</Table.Cell>
-      <Table.Cell>{v.cep}</Table.Cell>
-      <Table.Cell>{render_actions(v)}</Table.Cell>
-    </Table.Row>)
-  };
-
-  useEffect(() => {
-    if(messageState.visible) {
-      setTimeout(() => {
-        return dispatchMessage({type: 'DISMISS'});
-      }, 2000);
-    };
-  }, [messageState, dispatchMessage]);
 
   const close_message = () => {
     dispatchMessage({type: 'DISMISS'});
   }
-
 
   return (
     <>
@@ -646,12 +687,30 @@ const Dashboard = () => {
             </Table.Row>
           </Table.Header>
           <Table.Body>
-            { alunos.length > 0 ? render_alunos() : <h2>Nenhum dado registrado </h2> }
+            { alunos.length > 0 ? <Alunos /> : <h3>Nenhum dado registrado </h3> }
           </Table.Body>
         </Table>
-        {render_modal_info_alunos()}
-        {render_modal_select_cursos()}
-        <Button primary onClick={open_register_aluno}>Adicionar aluno</Button>
+        <ModalInfoAlunos 
+          onClose={close_info_aluno_modal}
+          onSavePress={(updateInfo) => on_update_aluno_save_press(updateInfo)}
+          {...modalInfoAlunoState}
+        />
+        <ModalSelectCursos
+          {...modalCursoState}
+          onClose={close_modal_cursos}
+          availableCursos={cursos.available}
+          alunoCursos={cursos.aluno}
+          onAddCurso={on_assign_new_curso}
+          onRemoveCurso={on_remove_assigned_curso}
+        />
+        <ModalDeleteConfirmation
+          open={openDeleteConfirmation}
+          title={`Deseja realmente excluir ${currentInfo.nome} ?`}
+          content={'O aluno será excluido de modo permanente.'}
+          onClose={close_delete_aluno_confirmation_modal}
+          onConfirmPress={on_confirm_delete_aluno}
+        />
+        <Button primary onClick={open_register_aluno_modal}>Adicionar aluno</Button>
         <Button href="/" secondary>Ver instruções</Button>
       </Container>
       <Transition.Group
@@ -659,13 +718,13 @@ const Dashboard = () => {
         duration={400}
       >
         {messageState.visible && (
-          <FloatMessage>
+          <Float>
             <Message
               icon={<Icon name={messageState.icon} />}
               onDismiss={close_message}
               {...messageState}
             />
-          </FloatMessage>
+          </Float>
           
         )}
       </Transition.Group>
@@ -677,6 +736,44 @@ export default Dashboard;
 
 
 // Test
+
+// const render_delete_confirmation_modal = () => {
+  //   return (
+  //     <ModalDeleteConfirmation
+  //       open={openDeleteConfirmation}
+  //       title={`Deseja realmente excluir ${currentInfo.nome} ?`}
+  //       content={'O aluno será excluido de modo permanente.'}
+  //       onClose={close_delete_aluno_confirmation_modal}
+  //       onConfirmPress={on_confirm_delete_aluno}
+  //     />
+  //   );
+  // }
+
+  // const render_modal_select_cursos = () => {
+  //   return (
+  //     <ModalSelectCursos
+  //       {...modalCursoState}
+  //       onClose={close_modal_cursos}
+  //       availableCursos={cursos.available}
+  //       alunoCursos={cursos.aluno}
+  //       onAddCurso={on_assign_new_curso}
+  //       onRemoveCurso={on_remove_assigned_curso}
+  //     />
+  //   );
+  // };
+
+  // const render_modal_info_alunos = () => {
+  //   return (
+  //     <ModalInfoAlunos 
+  //       // title={`Editando informações de ${currentInfo.nome}`}
+  //       onClose={close_info_aluno_modal}
+  //       // open={modalInfos}
+  //       onSavePress={(updateInfo) => on_update_aluno_save_press(updateInfo)}
+  //       // alunoInfo={currentInfo}
+  //       {...modalInfoAlunoState}
+  //     />
+  //   );
+  // };
 
 /*
 useEffect(() => {
